@@ -512,8 +512,8 @@ async function calcularValorTeleDinamico() {
                 
                 // --- LÓGICA DINÂMICA ---
                 // Puxa do db.config que você carregou via URL (?l=ID_DA_LOJA)
-                const valorPorKm = parseFloat(db.config.valorKm || 2.50);
-                const valorMinimo = parseFloat(db.config.valorTeleMinimo || 5.00);
+                const valorPorKm = parseFloat(db.config.valorTele || 2.50);
+                const valorMinimo = parseFloat(db.config.valorMinimo || 5.00);
                 
                 let taxaCalculada = km * valorPorKm;
                 if (taxaCalculada < valorMinimo) taxaCalculada = valorMinimo;
