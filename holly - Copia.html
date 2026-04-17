@@ -435,88 +435,70 @@
 
 
 
-// Coloque seu token em uma constante simples
-const MAPBOX_TOKEN = 'pk.eyJ1IjoicmFmYWVsZGFuZGEiLCJhIjoiY21tM3V6aHQ3MDR1dTJxcHdiNnhpaHd0ayJ9.w-fjeHmzlyVes75Rg4pJuQ';
 
+// 1. Defina o Token como uma constante de texto simples
+const TOKEN_MAP_DELIVERY = 'pk.eyJ1IjoicmFmYWVsZGFuZGEiLCJhIjoiY21tM3V6aHQ3MDR1dTJxcHdiNnhpaHd0ayJ9.w-fjeHmzlyVes75Rg4pJuQ';
 
-// 2. Função de Geocodificação (Transforma texto em coordenadas)
+// 2. Função para transformar endereço em coordenadas
 async function getCoords(enderecoTexto) {
     try {
-        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(enderecoTexto)}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(enderecoTexto)}.json?access_token=${TOKEN_MAP_DELIVERY}&limit=1`;
         const response = await fetch(url);
         const data = await response.json();
-        
-        if (data.features && data.features.length > 0) {
-            return data.features[0].center; // [long, lat]
-        }
-        return null;
+        return data.features?.length > 0 ? data.features[0].center : null;
     } catch (e) {
-        console.error("Erro no Geocoding:", e);
+        console.error("Erro Geocoding:", e);
         return null;
     }
 }
 
-// 3. Função Principal (Cálculo da Tele)
+// 3. Função de Cálculo (Limpada de qualquer referência ao mapboxgl)
 async function calcularValorTeleDinamico() {
-    console.log("Iniciando cálculo de tele...");
+    console.log("Iniciando cálculo de distância...");
+    
+    const ruaCliente = document.getElementById('cli-end')?.value;
+    const numCliente = document.getElementById('cli-num')?.value;
+    
+    if (!ruaCliente || !numCliente) return;
 
-    const ruaCli = document.getElementById('cli-end').value;
-    const numCli = document.getElementById('cli-num').value;
-
-    if (!ruaCli || !numCli) return;
-
-    // TRATAMENTO: Transforma o endereço da LOJA (que é um objeto) em texto
-    let enderecoLojaTexto = "";
-    if (db.loja && db.loja.endereco) {
-        if (typeof db.loja.endereco === 'object') {
-            const e = db.loja.endereco;
-            enderecoLojaTexto = `${e.rua || ''}, ${e.numero || ''}, ${e.bairro || ''}, ${db.loja.cidade || 'Porto Alegre'}`;
-        } else {
-            enderecoLojaTexto = db.loja.endereco;
-        }
+    // Trata o endereço da loja (seja objeto ou string)
+    let enderecoLojaStr = "";
+    if (typeof db.loja.endereco === 'object') {
+        const e = db.loja.endereco;
+        enderecoLojaStr = `${e.rua}, ${e.numero}, ${e.bairro}, ${db.loja.cidade || 'Porto Alegre'}`;
+    } else {
+        enderecoLojaStr = db.loja.endereco;
     }
 
-    const enderecoCliTexto = `${ruaCli}, ${numCli}, ${db.loja.cidade || 'Porto Alegre'}, RS`;
+    const enderecoClienteStr = `${ruaCliente}, ${numCliente}, ${db.loja.cidade || 'Porto Alegre'}, RS`;
 
-    if (!enderecoLojaTexto) {
-        console.error("Endereço da loja não definido no banco.");
-        return;
-    }
+    const cLoja = await getCoords(enderecoLojaStr);
+    const cCli = await getCoords(enderecoClienteStr);
 
-    // Busca as coordenadas das duas pontas
-    const coordsLoja = await getCoords(enderecoLojaTexto);
-    const coordsCli = await getCoords(enderecoCliTexto);
-
-    if (coordsLoja && coordsCli) {
-        // Busca a distância de direção (carro)
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsLoja[0]},${coordsLoja[1]};${coordsCli[0]},${coordsCli[1]}?access_token=${MAPBOX_TOKEN}`;
+    if (cLoja && cCli) {
+        // Chamada direta para a API de direções
+        const urlDir = `https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`;
         
         try {
-            const res = await fetch(url);
+            const res = await fetch(urlDir);
             const data = await res.json();
             
-            if (data.routes && data.routes.length > 0) {
-                const distanciaKm = data.routes[0].distance / 1000;
+            if (data.routes?.length > 0) {
+                const km = data.routes[0].distance / 1000;
+                
+                // Regra de cálculo (R$ 2.50 por km, mínimo de R$ 5.00)
+                let taxa = km * 2.50;
+                if (taxa < 5) taxa = 5;
 
-                // Regras de Preço (ajuste os valores conforme sua estratégia)
-                const valorKm = 2.50; 
-                const valorMin = 5.00;
+                db.config.valorTele = taxa;
+                console.log(`Sucesso: ${km.toFixed(2)}km | Taxa: R$ ${taxa.toFixed(2)}`);
                 
-                let precoTele = distanciaKm * valorKm;
-                if (precoTele < valorMin) precoTele = valorMin;
-
-                // Salva no config para o total do carrinho atualizar
-                db.config.valorTele = precoTele;
-                
-                console.log(`Distância: ${distanciaKm.toFixed(2)}km | Tele: R$ ${precoTele.toFixed(2)}`);
-                
-                // Atualiza a interface (Carrinho e Totais)
                 if (typeof atualizarCarrinhoUI === "function") {
                     atualizarCarrinhoUI();
                 }
             }
-        } catch (e) {
-            console.error("Erro no calculo de rota:", e);
+        } catch (err) {
+            console.error("Erro ao buscar rota:", err);
         }
     }
 }
@@ -529,50 +511,6 @@ async function calcularValorTeleDinamico() {
 
 
 
-
-
-// Função principal para calcular a tele
-async function calcularValorTeleDinamico() {
-    const enderecoCliente = document.getElementById('cli-end').value;
-    const numeroCliente = document.getElementById('cli-num').value;
-    const enderecoCompletoCliente = `${enderecoCliente}, ${numeroCliente}, Porto Alegre, RS`; // Ajuste a cidade conforme necessário
-    
-    const enderecoLoja = db.loja.endereco; // Puxa do seu objeto db.loja que veio da API
-
-    if (!enderecoCliente || !enderecoLoja) return;
-
-    // 1. Pega as coordenadas de ambos
-    const coordsLoja = await getCoords(enderecoLoja);
-    const coordsCliente = await getCoords(enderecoCompletoCliente);
-
-    if (coordsLoja && coordsCliente) {
-        // 2. Consulta a API de Directions do Mapbox para distância real (rota de carro)
-        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsLoja[0]},${coordsLoja[1]};${coordsCliente[0]},${coordsCliente[1]}?access_token=${mapboxgl.accessToken}`;
-        
-        try {
-            const res = await fetch(url);
-            const data = await res.json();
-            const distanciaKm = data.routes[0].distance / 1000; // Converte metros para KM
-
-            // 3. Aplica a regra de negócio da sua loja
-            // Exemplo: valor fixo por KM (puxando do db.config se você tiver lá)
-            const valorPorKm = parseFloat(db.config.valorKm || 2.50); 
-            const valorMinimo = parseFloat(db.config.valorTeleMinimo || 5.00);
-            
-            let novoValorTele = distanciaKm * valorPorKm;
-            if (novoValorTele < valorMinimo) novoValorTele = valorMinimo;
-
-            // Atualiza o valor global da tele para o checkout
-            db.config.valorTele = novoValorTele;
-            
-            console.log(`Distância: ${distanciaKm.toFixed(2)}km | Tele: R$ ${novoValorTele.toFixed(2)}`);
-            
-            atualizarCarrinhoUI(); // Recarrega o total no carrinho
-        } catch (e) {
-            console.error("Erro ao calcular rota", e);
-        }
-    }
-}
 
 
     function removerItem(i) { carrinho.splice(i, 1); atualizarCarrinhoUI(); }
