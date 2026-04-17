@@ -436,10 +436,10 @@
 
 
 
-// 1. Defina o Token como uma constante de texto simples
+// 1. Constante com o seu Token (deixe fora da função)
 const TOKEN_MAP_DELIVERY = 'pk.eyJ1IjoicmFmYWVsZGFuZGEiLCJhIjoiY21tM3V6aHQ3MDR1dTJxcHdiNnhpaHd0ayJ9.w-fjeHmzlyVes75Rg4pJuQ';
 
-// 2. Função para transformar endereço em coordenadas
+// 2. Função Auxiliar para pegar coordenadas
 async function getCoords(enderecoTexto) {
     try {
         const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(enderecoTexto)}.json?access_token=${TOKEN_MAP_DELIVERY}&limit=1`;
@@ -447,21 +447,23 @@ async function getCoords(enderecoTexto) {
         const data = await response.json();
         return data.features?.length > 0 ? data.features[0].center : null;
     } catch (e) {
-        console.error("Erro Geocoding:", e);
+        console.error("Erro ao buscar coordenadas:", e);
         return null;
     }
 }
 
-// 3. Função de Cálculo (Limpada de qualquer referência ao mapboxgl)
+// 3. Função Principal de Cálculo da Tele
 async function calcularValorTeleDinamico() {
-    console.log("Iniciando cálculo de distância...");
+    console.log("Calculando frete dinâmico...");
     
+    // Captura os dados digitados pelo cliente
     const ruaCliente = document.getElementById('cli-end')?.value;
     const numCliente = document.getElementById('cli-num')?.value;
     
+    // Só continua se os campos básicos estiverem preenchidos
     if (!ruaCliente || !numCliente) return;
 
-    // Trata o endereço da loja (seja objeto ou string)
+    // Converte o endereço da LOJA (que vem do DB como objeto ou string)
     let enderecoLojaStr = "";
     if (typeof db.loja.endereco === 'object') {
         const e = db.loja.endereco;
@@ -470,13 +472,16 @@ async function calcularValorTeleDinamico() {
         enderecoLojaStr = db.loja.endereco;
     }
 
-    const enderecoClienteStr = `${ruaCliente}, ${numCliente}, ${db.loja.cidade || 'Porto Alegre'}, RS`;
+    // Monta o endereço do CLIENTE para o Mapbox
+    const cidadeLoja = db.loja.cidade || "Porto Alegre";
+    const enderecoClienteStr = `${ruaCliente}, ${numCliente}, ${cidadeLoja}, RS`;
 
+    // Busca coordenadas (Geocoding)
     const cLoja = await getCoords(enderecoLojaStr);
     const cCli = await getCoords(enderecoClienteStr);
 
     if (cLoja && cCli) {
-        // Chamada direta para a API de direções
+        // Busca a rota real (Driving)
         const urlDir = `https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`;
         
         try {
@@ -485,34 +490,30 @@ async function calcularValorTeleDinamico() {
             
             if (data.routes?.length > 0) {
                 const km = data.routes[0].distance / 1000;
-                let taxa = 0;
-                db.config.valorTele = 0;
-                // Regra de cálculo (R$ 2.50 por km, mínimo de R$ 5.00)
-               // let taxa = km * 2.50;
-                //if (taxa < 5) taxa = 5;
+                
+                // --- LÓGICA DINÂMICA ---
+                // Puxa do db.config que você carregou via URL (?l=ID_DA_LOJA)
+                const valorPorKm = parseFloat(db.config.valorKm || 2.50);
+                const valorMinimo = parseFloat(db.config.valorTeleMinimo || 5.00);
+                
+                let taxaCalculada = km * valorPorKm;
+                if (taxaCalculada < valorMinimo) taxaCalculada = valorMinimo;
 
-                // Puxa as regras das configurações da loja (db.config)
-                const valorPorKm = parseFloat(db.config.valorTele || 2.50);
-                const valorMinimo = parseFloat(db.config.valorMinimo || 5.00);
-                
-                // Realiza o cálculo baseado nos KMs retornados pelo Mapbox
-                taxa = km * valorPorKm;
-                
-                // Aplica a regra de valor mínimo
-                if (taxa < valorMinimo) taxa = valorMinimo;
-                
-                // Salva o resultado final para o checkout
-                db.config.valorTele = taxa;
+                // Salva o valor final no estado global do pedido
+                db.config.valorTele = taxaCalculada;
               
-                console.log(`Sucesso: ${km.toFixed(2)}km | Taxa: R$ ${taxa.toFixed(2)}`);
+                console.log(`Km: ${km.toFixed(2)} | Valor Final: R$ ${taxaCalculada.toFixed(2)}`);
                 
+                // Atualiza o resumo do carrinho na tela
                 if (typeof atualizarCarrinhoUI === "function") {
                     atualizarCarrinhoUI();
                 }
             }
         } catch (err) {
-            console.error("Erro ao buscar rota:", err);
+            console.error("Erro ao calcular rota:", err);
         }
+    } else {
+        console.warn("Não foi possível localizar um dos endereços.");
     }
 }
 
