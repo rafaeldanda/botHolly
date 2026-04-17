@@ -143,73 +143,77 @@
     async function fetchJSON(url, options = {}) {
         try {
             const res = await fetch(url, options);
-            return res.ok ? await res.json() : null;
-        } catch (e) { return null; }
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) { 
+            console.error("Erro no fetch:", url, e);
+            return null; 
+        }
     }
 
     async function init() {
-        if (!idLoja) return;
+        console.log("Iniciando carregamento da loja:", idLoja);
+        if (!idLoja) {
+            alert("ID da loja não encontrado na URL (?l=...)");
+            return;
+        }
+
         const payload = { action: "read", lojaId: idLoja };
         const headers = { 'Content-Type': 'application/json' };
 
-        const [dataLoja, dataProd, dataComb, dataCup, dataConf, dataCats] = await Promise.all([
-            fetchJSON(`${ENDPOINTS.loja}?action=read&lojaId=${idLoja}`),
-            fetchJSON(ENDPOINTS.cardapio, { method: 'POST', headers, body: JSON.stringify(payload) }),
-            fetchJSON(ENDPOINTS.combos, { method: 'POST', headers, body: JSON.stringify(payload) }),
-            fetchJSON(ENDPOINTS.cupons, { method: 'POST', headers, body: JSON.stringify(payload) }),
-            fetchJSON(ENDPOINTS.config, { method: 'POST', headers, body: JSON.stringify(payload) }),
-            fetchJSON(ENDPOINTS.categorias, { method: 'POST', headers, body: JSON.stringify(payload) })
-        ]);
+        try {
+            const [dataLoja, dataProd, dataComb, dataCup, dataConf, dataCats] = await Promise.all([
+                fetchJSON(`${ENDPOINTS.loja}?action=read&lojaId=${idLoja}`),
+                fetchJSON(ENDPOINTS.cardapio, { method: 'POST', headers, body: JSON.stringify(payload) }),
+                fetchJSON(ENDPOINTS.combos, { method: 'POST', headers, body: JSON.stringify(payload) }),
+                fetchJSON(ENDPOINTS.cupons, { method: 'POST', headers, body: JSON.stringify(payload) }),
+                fetchJSON(ENDPOINTS.config, { method: 'POST', headers, body: JSON.stringify(payload) }),
+                fetchJSON(ENDPOINTS.categorias, { method: 'POST', headers, body: JSON.stringify(payload) })
+            ]);
 
-        if (Array.isArray(dataCats)) dataCats.forEach(c => mapaCategorias[c.categoriaId] = c.nome);
+            console.log("Dados recebidos com sucesso.");
 
-        db = {
-            loja: dataLoja || {},
-            produtos: Array.isArray(dataProd) ? dataProd : [],
-            combos: Array.isArray(dataComb) ? dataComb : (dataComb ? [dataComb] : []),
-            config: dataConf || { valorTele: 0, valorMinimo: 0 },
-            cupons: Array.isArray(dataCup) ? dataCup : []
-        };
-        renderInterface();
-    }
+            if (Array.isArray(dataCats)) dataCats.forEach(c => mapaCategorias[c.categoriaId] = c.nome);
 
-    // LÓGICA DE CUPOM REFORÇADA
-    function aplicarCupom() {
-        const input = document.getElementById('input-cupom');
-        if (!input) return;
-        const codigo = input.value.toUpperCase().trim();
-        
-        // Verifica se o cupom existe e está ativo (aceita true booleano ou string "true")
-        const cupomEncontrado = db.cupons.find(c => 
-            c.codigo.toString().toUpperCase() === codigo && 
-            (c.ativo === true || c.ativo === "true")
-        );
+            db = {
+                loja: dataLoja || { nome: "Loja sem Nome" },
+                produtos: Array.isArray(dataProd) ? dataProd : [],
+                combos: Array.isArray(dataComb) ? dataComb : (dataComb ? [dataComb] : []),
+                config: dataConf || { valorTele: 0, valorMinimo: 0 },
+                cupons: Array.isArray(dataCup) ? dataCup : []
+            };
 
-        if (cupomEncontrado) {
-            descontoAtivo = parseFloat(cupomEncontrado.valor);
-            cupomAplicado = codigo;
-            alert("Cupom aplicado com sucesso!");
-        } else {
-            descontoAtivo = 0;
-            cupomAplicado = "";
-            alert("Cupom inválido ou expirado.");
+            renderInterface();
+        } catch (err) {
+            console.error("Erro crítico no Init:", err);
+            // Tenta renderizar mesmo com erro para tirar o "Carregando"
+            renderInterface();
         }
-        atualizarCarrinhoUI();
     }
 
     function renderInterface() {
-        document.getElementById('loading-skeleton')?.classList.add('hidden');
-        document.getElementById('nome-loja').textContent = db.loja.nome || "LOJA";
+        console.log("Renderizando interface...");
+        const skeleton = document.getElementById('loading-skeleton');
+        if (skeleton) skeleton.classList.add('hidden');
+        
+        const nomeLojaEl = document.getElementById('nome-loja');
+        if (nomeLojaEl) nomeLojaEl.textContent = db.loja.nome || "ME LEVA";
 
         const combosAtivos = db.combos.filter(c => c.ativo === true || c.ativo === "true");
-        if (combosAtivos.length > 0) {
-            document.getElementById('combos-section').classList.remove('hidden');
-            document.getElementById('combos-content').innerHTML = combosAtivos.map(c => cardTemplate(c, true)).join('');
+        const combosSection = document.getElementById('combos-section');
+        const combosContent = document.getElementById('combos-content');
+        
+        if (combosAtivos.length > 0 && combosSection && combosContent) {
+            combosSection.classList.remove('hidden');
+            combosContent.innerHTML = combosAtivos.map(c => cardTemplate(c, true)).join('');
         }
 
         const menuContent = document.getElementById('menu-content');
         const nav = document.getElementById('category-nav');
-        menuContent.innerHTML = ""; nav.innerHTML = "";
+        if (!menuContent || !nav) return;
+
+        menuContent.innerHTML = ""; 
+        nav.innerHTML = "";
 
         const categoriasMap = db.produtos.reduce((acc, p) => {
             if (p.ativo === false || p.ativo === "false") return acc;
@@ -233,12 +237,13 @@
 
     function cardTemplate(item, isCombo = false) {
         const id = isCombo ? item.comboId : item.produtoId;
+        const preco = parseFloat(item.preco || 0).toFixed(2);
         return `
             <div onclick="abrirModal('${id}', ${isCombo})" class="bg-white p-4 rounded-[2rem] flex gap-4 shadow-sm border border-gray-100 hover:border-yellow-400 cursor-pointer active:scale-95 transition-all">
                 <div class="flex-1">
                     <h4 class="font-bold text-gray-900 uppercase text-sm">${item.nome}</h4>
                     <p class="text-[10px] text-gray-500 mt-1 line-clamp-2">${item.descricao || ''}</p>
-                    <p class="font-black text-lg mt-2 italic">R$ ${parseFloat(item.preco || 0).toFixed(2)}</p>
+                    <p class="font-black text-lg mt-2 italic">R$ ${preco}</p>
                 </div>
                 <div class="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl border">${isCombo ? '🎁' : '🍔'}</div>
             </div>`;
@@ -246,25 +251,32 @@
 
     function abrirModal(id, isCombo) {
         const item = isCombo ? db.combos.find(c => c.comboId === id) : db.produtos.find(p => p.produtoId === id);
+        if (!item) return;
+
         const modalHTML = `
             <div id="modal" class="fixed inset-0 z-[110] flex items-end md:items-center justify-center bg-black/50 backdrop-blur-sm">
                 <div class="bg-white w-full md:max-w-xl rounded-t-[2.5rem] md:rounded-[2.5rem] flex flex-col max-h-[90vh]">
                     <div class="p-6 overflow-y-auto no-scrollbar">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-xl font-black uppercase italic">${item.nome}</h2>
-                            <button onclick="this.closest('#modal').remove()" class="w-8 h-8 bg-gray-100 rounded-full font-bold">✕</button>
+                            <button onclick="document.getElementById('modal').remove()" class="w-8 h-8 bg-gray-100 rounded-full font-bold">✕</button>
                         </div>
                         <div class="space-y-3">
                             ${item.adicionais?.map(add => `
                                 <label class="flex justify-between p-4 bg-gray-50 rounded-2xl border-2 border-transparent has-[:checked]:border-yellow-400 cursor-pointer">
-                                    <div class="flex gap-3"><input type="checkbox" name="add" data-nome="${add.nome}" data-preco="${add.preco}" data-id="${add.adicionalId}" class="w-5 h-5 accent-black"><span class="font-bold text-sm">${add.nome}</span></div>
+                                    <div class="flex gap-3">
+                                        <input type="checkbox" name="add" data-nome="${add.nome}" data-preco="${add.preco}" data-id="${add.adicionalId}" class="w-5 h-5 accent-black">
+                                        <span class="font-bold text-sm">${add.nome}</span>
+                                    </div>
                                     <span class="text-xs font-black text-green-600">+ R$ ${parseFloat(add.preco).toFixed(2)}</span>
                                 </label>
                             `).join('') || ''}
                         </div>
                         <textarea id="obs" placeholder="Alguma observação?" class="w-full p-4 bg-gray-100 rounded-2xl border-none mt-6 text-sm outline-none focus:ring-2 ring-yellow-400"></textarea>
                     </div>
-                    <div class="p-6 border-t"><button onclick="adicionarAoCarrinho('${id}', ${isCombo})" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase shadow-lg">ADICIONAR</button></div>
+                    <div class="p-6 border-t">
+                        <button onclick="adicionarAoCarrinho('${id}', ${isCombo})" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase shadow-lg">ADICIONAR</button>
+                    </div>
                 </div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -272,38 +284,63 @@
 
     function adicionarAoCarrinho(id, isCombo) {
         const item = isCombo ? db.combos.find(c => c.comboId === id) : db.produtos.find(p => p.produtoId === id);
-        const selectedAdds = []; let extra = 0;
+        const selectedAdds = []; 
+        let extra = 0;
+        
         document.querySelectorAll('input[name="add"]:checked').forEach(el => {
-            selectedAdds.push({ nome: el.dataset.nome, preco: parseFloat(el.dataset.preco), adicionalId: el.dataset.id });
+            selectedAdds.push({ 
+                nome: el.dataset.nome, 
+                preco: parseFloat(el.dataset.preco), 
+                adicionalId: el.dataset.id 
+            });
             extra += parseFloat(el.dataset.preco);
         });
-        carrinho.push({ ...item, adicionaisSelecionados: selectedAdds, obsCliente: document.getElementById('obs').value, valorFinal: parseFloat(item.preco || 0) + extra, tipo: isCombo ? 'combo' : 'produto' });
+
+        carrinho.push({ 
+            ...item, 
+            adicionaisSelecionados: selectedAdds, 
+            obsCliente: document.getElementById('obs').value, 
+            valorFinal: parseFloat(item.preco || 0) + extra, 
+            tipo: isCombo ? 'combo' : 'produto' 
+        });
+
         document.getElementById('modal').remove();
         atualizarCarrinhoUI();
         toggleCart();
     }
 
     function atualizarCarrinhoUI() {
-        document.getElementById('cart-count').textContent = carrinho.length;
+        const countEl = document.getElementById('cart-count');
         const itemsCont = document.getElementById('cart-items');
         const footerCont = document.getElementById('cart-footer');
         
+        if (countEl) countEl.textContent = carrinho.length;
+        
         if (carrinho.length === 0) {
             itemsCont.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-30 italic font-black py-20 uppercase">Carrinho Vazio</div>`;
-            footerCont.innerHTML = ""; return;
+            footerCont.innerHTML = ""; 
+            return;
         }
 
-        itemsCont.innerHTML = carrinho.map((item, idx) => `
-            <div class="bg-gray-50 p-4 rounded-2xl relative border mb-3">
-                <button onclick="removerItem(${idx})" class="absolute top-4 right-4 text-red-500 font-bold text-[10px] uppercase">Remover</button>
-                <p class="font-bold text-xs uppercase">${item.nome}</p>
-                ${item.obsCliente ? `<p class="obs-vermelha">"${item.obsCliente}"</p>` : ''}
-                <p class="font-black mt-2">R$ ${item.valorFinal.toFixed(2)}</p>
-            </div>`).join('');
+        // EXIBIÇÃO FIEL DOS ADICIONAIS
+        itemsCont.innerHTML = carrinho.map((item, idx) => {
+            const addsHTML = item.adicionaisSelecionados?.map(a => 
+                `<span class="block text-[10px] text-gray-400 font-black uppercase tracking-tight">${a.nome}</span>`
+            ).join('') || '';
+
+            return `
+                <div class="bg-gray-50 p-4 rounded-2xl relative border mb-3">
+                    <button onclick="removerItem(${idx})" class="absolute top-4 right-4 text-red-500 font-bold text-[10px] uppercase">Remover</button>
+                    <p class="font-bold text-xs uppercase">${item.nome}</p>
+                    <div class="mt-1">${addsHTML}</div>
+                    ${item.obsCliente ? `<p class="obs-vermelha">"${item.obsCliente}"</p>` : ''}
+                    <p class="font-black mt-2">R$ ${item.valorFinal.toFixed(2)}</p>
+                </div>`;
+        }).join('');
 
         const subtotal = carrinho.reduce((acc, i) => acc + i.valorFinal, 0);
         const tele = entregaAtiva ? parseFloat(db.config.valorTele || 0) : 0;
-        const totalCalculado = (subtotal + tele) - descontoAtivo;
+        const total = (subtotal + tele) - descontoAtivo;
 
         footerCont.innerHTML = `
             <div class="space-y-4">
@@ -314,70 +351,148 @@
                         <button onclick="aplicarCupom()" class="bg-black text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Aplicar</button>
                     </div>
                 </div>
-
                 <input type="text" id="cli-nome" placeholder="Seu Nome" class="input-checkout">
                 <input type="tel" id="cli-tel" placeholder="Seu WhatsApp" class="input-checkout">
-                
                 <div class="flex gap-2">
                     <button onclick="setEntrega(true)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">ENTREGA</button>
                     <button onclick="setEntrega(false)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${!entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">RETIRADA</button>
                 </div>
-
                 <div id="endereco-campos" class="${entregaAtiva ? '' : 'hidden'} space-y-2">
                     <input type="text" id="cli-end" placeholder="Rua / Bairro" class="input-checkout">
-                    <input type="text" id="cli-num" placeholder="Número" class="input-checkout">
+                    <input type="text" id="cli-num" placeholder="Número" class="input-checkout" onblur="calcularValorTeleDinamico()">
                 </div>
-
                 <select id="forma-pagamento" class="input-checkout"><option value="pix">PIX</option><option value="cartao">CARTÃO</option></select>
-                
                 <div class="pt-4 border-t text-xs font-bold uppercase italic space-y-1">
                     <div class="flex justify-between text-gray-400"><span>Subtotal</span><span>R$ ${subtotal.toFixed(2)}</span></div>
                     ${entregaAtiva ? `<div class="flex justify-between text-gray-400"><span>Entrega</span><span>R$ ${tele.toFixed(2)}</span></div>` : ''}
                     ${descontoAtivo > 0 ? `<div class="flex justify-between text-green-600"><span>Desconto</span><span>- R$ ${descontoAtivo.toFixed(2)}</span></div>` : ''}
-                    <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${(totalCalculado < 0 ? 0 : totalCalculado).toFixed(2)}</span></div>
+                    <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${(total < 0 ? 0 : total).toFixed(2)}</span></div>
                 </div>
-                
                 <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all">Confirmar Pedido</button>
             </div>`;
     }
 
-    function setEntrega(status) { entregaAtiva = status; atualizarCarrinhoUI(); }
+    function aplicarCupom() {
+    const input = document.getElementById('input-cupom');
+    if (!input) return;
+    
+    const textoDigitado = input.value.trim().toUpperCase();
+    
+    const found = db.cupons.find(c => {
+        // Ajustado para usar 'nome' como o código do cupom
+        const nomeCupom = c.nome ? c.nome.toString().toUpperCase() : "";
+        
+        // Verifica se está ativo
+        const isAtivo = (c.ativo === true || c.ativo === "true");
+        
+        // Verifica a validade da data
+        const agora = new Date();
+        const dataFim = c.dataTermino ? new Date(c.dataTermino) : null;
+        const noPrazo = dataFim ? agora <= dataFim : true;
+
+        return nomeCupom === textoDigitado && isAtivo && noPrazo;
+    });
+
+    if (found) {
+        // Ajustado para usar 'desconto' em vez de 'valor'
+        descontoAtivo = parseFloat(found.desconto || 0);
+        cupomAplicado = textoDigitado;
+        alert("Cupom aplicado: R$ " + descontoAtivo.toFixed(2));
+    } else {
+        descontoAtivo = 0;
+        cupomAplicado = "";
+        alert("Cupom inválido, expirado ou limite atingido.");
+    }
+    atualizarCarrinhoUI();
+}
+
+    function setEntrega(s) { entregaAtiva = s; atualizarCarrinhoUI(); }
 
     async function finalizarPedido() {
         const btn = document.getElementById('btn-finalizar');
         const nome = document.getElementById('cli-nome').value;
         const tel = document.getElementById('cli-tel').value;
-        if (!nome || !tel) return alert("Preencha nome e telefone!");
+        if (!nome || !tel) return alert("Dados faltantes!");
         
         btn.disabled = true; btn.textContent = "ENVIANDO...";
-
         const payload = {
-            loja: { confId: db.config.confId, lojaId: idLoja, valorTele: entregaAtiva ? db.config.valorTele : 0 },
+            loja: { lojaId: idLoja, valorTele: entregaAtiva ? db.config.valorTele : 0 },
             itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, adicionais: i.adicionaisSelecionados, obs: i.obsCliente })),
-            cliente: { nome, telefone: tel, endereco: entregaAtiva ? document.getElementById('cli-end').value : "RETIRADA", numero: entregaAtiva ? document.getElementById('cli-num').value : "" },
-            formaPagamento: document.getElementById('forma-pagamento').value,
-            cupom: cupomAplicado,
-            valorDesconto: descontoAtivo,
-            totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo,
-            dataCriacao: new Date().toISOString()
+            cliente: { nome, telefone: tel, endereco: entregaAtiva ? document.getElementById('cli-end').value : "RETIRADA" },
+            totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo
         };
 
         try {
             const res = await fetch(ENDPOINTS.enviarPedido, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { 
-                alert("Pedido enviado!"); 
-                carrinho = []; 
-                descontoAtivo = 0;
-                cupomAplicado = "";
-                atualizarCarrinhoUI(); 
-                toggleCart(); 
-            }
-        } catch (e) { alert("Erro ao enviar."); } finally { btn.disabled = false; btn.textContent = "Confirmar Pedido"; }
+            if (res.ok) { alert("Sucesso!"); window.location.reload(); }
+        } catch (e) { alert("Erro."); } finally { btn.disabled = false; }
     }
 
-    function removerItem(idx) { carrinho.splice(idx, 1); atualizarCarrinhoUI(); }
+
+// Função para buscar coordenadas (Latitude/Longitude) de um endereço
+async function getCoords(endereco) {
+    try {
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(endereco)}.json?access_token=${mapboxgl.accessToken}&limit=1`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.features && data.features.length > 0) {
+            return data.features[0].center; // Retorna [longitude, latitude]
+        }
+        return null;
+    } catch (e) {
+        console.error("Erro ao geodificar endereço", e);
+        return null;
+    }
+}
+
+// Função principal para calcular a tele
+async function calcularValorTeleDinamico() {
+    const enderecoCliente = document.getElementById('cli-end').value;
+    const numeroCliente = document.getElementById('cli-num').value;
+    const enderecoCompletoCliente = `${enderecoCliente}, ${numeroCliente}, Porto Alegre, RS`; // Ajuste a cidade conforme necessário
+    
+    const enderecoLoja = db.loja.endereco; // Puxa do seu objeto db.loja que veio da API
+
+    if (!enderecoCliente || !enderecoLoja) return;
+
+    // 1. Pega as coordenadas de ambos
+    const coordsLoja = await getCoords(enderecoLoja);
+    const coordsCliente = await getCoords(enderecoCompletoCliente);
+
+    if (coordsLoja && coordsCliente) {
+        // 2. Consulta a API de Directions do Mapbox para distância real (rota de carro)
+        const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coordsLoja[0]},${coordsLoja[1]};${coordsCliente[0]},${coordsCliente[1]}?access_token=${mapboxgl.accessToken}`;
+        
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            const distanciaKm = data.routes[0].distance / 1000; // Converte metros para KM
+
+            // 3. Aplica a regra de negócio da sua loja
+            // Exemplo: valor fixo por KM (puxando do db.config se você tiver lá)
+            const valorPorKm = parseFloat(db.config.valorKm || 2.50); 
+            const valorMinimo = parseFloat(db.config.valorTeleMinimo || 5.00);
+            
+            let novoValorTele = distanciaKm * valorPorKm;
+            if (novoValorTele < valorMinimo) novoValorTele = valorMinimo;
+
+            // Atualiza o valor global da tele para o checkout
+            db.config.valorTele = novoValorTele;
+            
+            console.log(`Distância: ${distanciaKm.toFixed(2)}km | Tele: R$ ${novoValorTele.toFixed(2)}`);
+            
+            atualizarCarrinhoUI(); // Recarrega o total no carrinho
+        } catch (e) {
+            console.error("Erro ao calcular rota", e);
+        }
+    }
+}
+
+
+    function removerItem(i) { carrinho.splice(i, 1); atualizarCarrinhoUI(); }
     function toggleCart() { document.getElementById('cart-sidebar-container').classList.toggle('cart-open'); }
 
+    // Roda o Init
     init();
     </script>
 </body>
