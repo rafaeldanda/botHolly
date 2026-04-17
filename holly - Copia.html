@@ -309,68 +309,79 @@
         toggleCart();
     }
 
-    function atualizarCarrinhoUI() {
-        const countEl = document.getElementById('cart-count');
-        const itemsCont = document.getElementById('cart-items');
-        const footerCont = document.getElementById('cart-footer');
-        
-        if (countEl) countEl.textContent = carrinho.length;
-        
-        if (carrinho.length === 0) {
-            itemsCont.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-30 italic font-black py-20 uppercase">Carrinho Vazio</div>`;
-            footerCont.innerHTML = ""; 
-            return;
-        }
+  function atualizarCarrinhoUI() {
+    const itemsCont = document.getElementById('cart-items');
+    const footerCont = document.getElementById('cart-footer');
+    
+    // --- 1. CAPTURA OS DADOS ATUAIS (Para não perder ao redesenhar) ---
+    const nomeAtual = document.getElementById('cli-nome')?.value || "";
+    const telAtual = document.getElementById('cli-tel')?.value || "";
+    const ruaAtual = document.getElementById('cli-end')?.value || "";
+    const numAtual = document.getElementById('cli-num')?.value || "";
+    const pagtoAtual = document.getElementById('forma-pagamento')?.value || "pix";
+    const cupomAtual = document.getElementById('input-cupom')?.value || "";
 
-        // EXIBIÇÃO FIEL DOS ADICIONAIS
-        itemsCont.innerHTML = carrinho.map((item, idx) => {
-            const addsHTML = item.adicionaisSelecionados?.map(a => 
-                `<span class="block text-[10px] text-gray-400 font-black uppercase tracking-tight">${a.nome}</span>`
-            ).join('') || '';
-
-            return `
-                <div class="bg-gray-50 p-4 rounded-2xl relative border mb-3">
-                    <button onclick="removerItem(${idx})" class="absolute top-4 right-4 text-red-500 font-bold text-[10px] uppercase">Remover</button>
-                    <p class="font-bold text-xs uppercase">${item.nome}</p>
-                    <div class="mt-1">${addsHTML}</div>
-                    ${item.obsCliente ? `<p class="obs-vermelha">"${item.obsCliente}"</p>` : ''}
-                    <p class="font-black mt-2">R$ ${item.valorFinal.toFixed(2)}</p>
-                </div>`;
-        }).join('');
-
-        const subtotal = carrinho.reduce((acc, i) => acc + i.valorFinal, 0);
-        const tele = entregaAtiva ? parseFloat(db.config.valorTele || 0) : 0;
-        const total = (subtotal + tele) - descontoAtivo;
-
-        footerCont.innerHTML = `
-            <div class="space-y-4">
-                <div class="bg-gray-50 p-3 rounded-2xl border border-dashed border-gray-300">
-                    <p class="text-[9px] font-black uppercase text-gray-400 mb-2">Cupom de Desconto</p>
-                    <div class="flex gap-2">
-                        <input type="text" id="input-cupom" value="${cupomAplicado}" placeholder="CÓDIGO" class="flex-1 bg-white p-2 rounded-lg text-xs font-bold uppercase outline-none ring-1 ring-gray-200 focus:ring-yellow-400">
-                        <button onclick="aplicarCupom()" class="bg-black text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Aplicar</button>
-                    </div>
-                </div>
-                <input type="text" id="cli-nome" placeholder="Seu Nome" class="input-checkout">
-                <input type="tel" id="cli-tel" placeholder="Seu WhatsApp" class="input-checkout">
-                <div class="flex gap-2">
-                    <button onclick="setEntrega(true)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">ENTREGA</button>
-                    <button onclick="setEntrega(false)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${!entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">RETIRADA</button>
-                </div>
-                <div id="endereco-campos" class="${entregaAtiva ? '' : 'hidden'} space-y-2">
-                    <input type="text" id="cli-end" placeholder="Rua / Bairro" class="input-checkout">
-                    <input type="text" id="cli-num" placeholder="Número" class="input-checkout" onblur="calcularValorTeleDinamico()">
-                </div>
-                <select id="forma-pagamento" class="input-checkout"><option value="pix">PIX</option><option value="cartao">CARTÃO</option></select>
-                <div class="pt-4 border-t text-xs font-bold uppercase italic space-y-1">
-                    <div class="flex justify-between text-gray-400"><span>Subtotal</span><span>R$ ${subtotal.toFixed(2)}</span></div>
-                    ${entregaAtiva ? `<div class="flex justify-between text-gray-400"><span>Entrega</span><span>R$ ${tele.toFixed(2)}</span></div>` : ''}
-                    ${descontoAtivo > 0 ? `<div class="flex justify-between text-green-600"><span>Desconto</span><span>- R$ ${descontoAtivo.toFixed(2)}</span></div>` : ''}
-                    <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${(total < 0 ? 0 : total).toFixed(2)}</span></div>
-                </div>
-                <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all">Confirmar Pedido</button>
-            </div>`;
+    // --- 2. RENDERIZA OS ITENS (Parte de cima) ---
+    if (carrinho.length === 0) {
+        itemsCont.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-30 italic font-black py-20 uppercase">Carrinho Vazio</div>`;
+        footerCont.innerHTML = "";
+        return;
     }
+
+    itemsCont.innerHTML = carrinho.map((item, idx) => `
+        <div class="bg-gray-50 p-4 rounded-2xl relative border mb-3">
+            <button onclick="removerItem(${idx})" class="absolute top-4 right-4 text-red-500 font-bold text-[10px] uppercase">Remover</button>
+            <p class="font-bold text-xs uppercase">${item.nome}</p>
+            ${item.adicionaisSelecionados?.map(a => `<span class="block text-[10px] text-gray-400 font-black uppercase">+ ${a.nome}</span>`).join('') || ''}
+            ${item.obsCliente ? `<p class="text-[10px] text-red-600 font-bold italic mt-1">"${item.obsCliente}"</p>` : ''}
+            <p class="font-black mt-2 text-base">R$ ${item.valorFinal.toFixed(2)}</p>
+        </div>
+    `).join('');
+
+    // --- 3. CÁLCULOS ---
+    const subtotal = carrinho.reduce((acc, i) => acc + i.valorFinal, 0);
+    const tele = entregaAtiva ? parseFloat(db.config.valorTele || 0) : 0;
+    const total = (subtotal + tele) - descontoAtivo;
+
+    // --- 4. RENDERIZA O FOOTER (Com os valores preservados) ---
+    footerCont.innerHTML = `
+        <div class="space-y-4">
+            <div class="bg-gray-50 p-3 rounded-2xl border border-dashed border-gray-300">
+                <p class="text-[9px] font-black uppercase text-gray-400 mb-2">Cupom de Desconto</p>
+                <div class="flex gap-2">
+                    <input type="text" id="input-cupom" value="${cupomAtual}" placeholder="CÓDIGO" class="flex-1 bg-white p-2 rounded-lg text-xs font-bold uppercase outline-none ring-1 ring-gray-200">
+                    <button onclick="aplicarCupom()" class="bg-black text-white px-4 py-2 rounded-lg text-[10px] font-bold uppercase">Aplicar</button>
+                </div>
+            </div>
+
+            <input type="text" id="cli-nome" value="${nomeAtual}" placeholder="Seu Nome" class="input-checkout">
+            <input type="tel" id="cli-tel" value="${telAtual}" placeholder="Seu WhatsApp" class="input-checkout">
+
+            <div class="flex gap-2">
+                <button onclick="setEntrega(true)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">ENTREGA</button>
+                <button onclick="setEntrega(false)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${!entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">RETIRADA</button>
+            </div>
+
+            <div id="endereco-campos" class="${entregaAtiva ? '' : 'hidden'} space-y-2">
+                <input type="text" id="cli-end" value="${ruaAtual || db.rua || ''}" placeholder="Rua / Bairro" class="input-checkout">
+                <input type="text" id="cli-num" value="${numAtual}" placeholder="Número" class="input-checkout" onblur="calcularValorTeleDinamico()">
+            </div>
+
+            <select id="forma-pagamento" class="input-checkout">
+                <option value="pix" ${pagtoAtual === 'pix' ? 'selected' : ''}>PIX</option>
+                <option value="cartao" ${pagtoAtual === 'cartao' ? 'selected' : ''}>CARTÃO</option>
+            </select>
+
+            <div class="pt-4 border-t text-xs font-bold uppercase italic space-y-1">
+                <div class="flex justify-between text-gray-400"><span>Subtotal</span><span>R$ ${subtotal.toFixed(2)}</span></div>
+                ${entregaAtiva ? `<div class="flex justify-between text-gray-400"><span>Entrega</span><span>R$ ${tele.toFixed(2)}</span></div>` : ''}
+                ${descontoAtivo > 0 ? `<div class="flex justify-between text-green-600"><span>Desconto</span><span>- R$ ${descontoAtivo.toFixed(2)}</span></div>` : ''}
+                <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${(total < 0 ? 0 : total).toFixed(2)}</span></div>
+            </div>
+
+            <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all">Confirmar Pedido</button>
+        </div>`;
+}
 
     function aplicarCupom() {
     const input = document.getElementById('input-cupom');
