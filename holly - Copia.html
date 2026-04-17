@@ -427,7 +427,11 @@
         
         btn.disabled = true; btn.textContent = "ENVIANDO...";
         const payload = {
-            loja: { lojaId: idLoja, valorTele: entregaAtiva ? db.config.valorTele : 0 },
+            // Substitua a sua linha por esta:
+            loja: { 
+                ...db.loja, 
+                valorTele: entregaAtiva ? db.config.valorTele : 0 
+            },
             itens: carrinho.map(i => ({ nome: i.nome, preco: i.preco, adicionais: i.adicionaisSelecionados, obs: i.obsCliente })),
             cliente: { nome, telefone: tel, endereco: entregaAtiva ? document.getElementById('cli-end').value : "RETIRADA" },
             totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo
