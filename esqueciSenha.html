@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recuperar Senha - Me Leva</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        p.description {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+            font-size: 1rem;
+        }
+
+        .input-group input:focus {
+            border-color: #007bff;
+        }
+
+        button {
+            width: 100%;
+            padding: 0.8rem;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        #message {
+            margin-top: 1.2rem;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: none;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .success { display: block !important; background-color: #d4edda; color: #155724; }
+        .error { display: block !important; background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <form id="forgotForm">
+            <h2>Esqueceu a senha?</h2>
+            <p class="description">Insira seu e-mail cadastrado e enviaremos as instruções para criar uma nova senha.</p>
+            
+            <div class="input-group">
+                <label for="email">E-mail</label>
+                <input type="email" id="email" placeholder="seu@email.com" required>
+            </div>
+
+            <button type="submit" id="btnSubmit">Enviar Instruções</button>
+
+            <div id="message"></div>
+
+            <a href="login.html" class="back-link">Voltar para o login</a>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('forgotForm');
+        const btn = document.getElementById('btnSubmit');
+        const msgDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+
+            // Interface de carregamento
+            btn.disabled = true;
+            btn.innerText = "Enviando...";
+            msgDiv.className = "";
+            msgDiv.innerText = "";
+
+            const url = 'https://primary-production-fad5.up.railway.app/webhook/3e641677-3640-4592-837c-4a0fb70439b6';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        acao: "recuperacao_senha",
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                if (response.ok) {
+                    msgDiv.innerText = "✓ Se este e-mail estiver cadastrado, você receberá um link de recuperação em instantes.";
+                    msgDiv.classList.add('success');
+                    form.reset();
+                } else {
+                    throw new Error();
+                }
+
+            } catch (error) {
+                msgDiv.innerText = "✕ Erro ao processar solicitação. Tente novamente mais tarde.";
+                msgDiv.classList.add('error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Enviar Instruções";
+            }
+        });
+    </script>
+
+</body>
+</html>

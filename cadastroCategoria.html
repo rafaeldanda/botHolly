@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Categorias - Me Leva</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 600px; }
+        h2 { text-align: center; margin-bottom: 1.5rem; color: #333; }
+        
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.5rem; color: #666; }
+        input[type="text"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+        input[type="text"]:focus { border-color: #007bff; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+        
+        .btn { padding: 0.8rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-save { background: #007bff; color: white; width: 100%; }
+        .btn-save:hover { background: #0056b3; }
+        .btn-edit { background: #ffc107; color: #333; margin-right: 5px; }
+        .btn-del { background: #dc3545; color: white; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 2rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f8f9fa; color: #666; }
+
+        #message { margin-top: 1rem; text-align: center; padding: 10px; border-radius: 4px; display: none; }
+        .success { display: block; background: #d4edda; color: #155724; }
+        .error { display: block; background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Categorias</h2>
+    
+    <form id="categoryForm">
+        <input type="hidden" id="editId">
+        <input type="hidden" id="categoriaId">
+
+        <div class="form-group">
+            <label>Nome da Categoria</label>
+            <input type="text" id="nome" placeholder="Ex: Sushi, Velas, Bebidas" required>
+        </div>
+        <div class="checkbox-group">
+            <input type="checkbox" id="ativo" checked>
+            <label for="ativo">Categoria Ativa</label>
+        </div>
+        <button type="submit" id="btnSubmit" class="btn btn-save">Salvar Categoria</button>
+    </form>
+
+    <div id="message"></div>
+
+    <table id="categoryTable">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+</div>
+
+<script>
+    const form = document.getElementById('categoryForm');
+    const msgDiv = document.getElementById('message');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const tableBody = document.querySelector('#categoryTable tbody');
+    
+    // Captura o parâmetro ?l= da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const lojistaId = urlParams.get('l');
+
+    const WEBHOOK_URL = 'https://primary-production-fad5.up.railway.app/webhook/ed3089cf-5e2f-4aa0-bc3f-3c1a827616fa';
+
+    // Função genérica de chamada à API
+    async function apiCall(action, data = {}) {
+        const payload = {
+            action: action,
+            lojista_id: lojistaId,
+            ...data
+        };
+
+        try {
+            const response = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        } catch (e) {
+            console.error("Erro na requisição:", e);
+            return null;
+        }
+    }
+
+    // CREATE / UPDATE
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "Processando...";
+        
+        const data = {
+            id: document.getElementById('editId').value || null,
+            categoriaId: document.getElementById('categoriaId').value || null,
+            nome: document.getElementById('nome').value,
+            ativo: document.getElementById('ativo').checked
+        };
+
+        const action = data.id ? 'update' : 'create';
+        const res = await apiCall(action, data);
+
+        // Validação flexível (aceita campo status ou o retorno do objeto salvo)
+        if (res && (res.status || res._id || res.id)) {
+            showMessage("✓ Operação concluída com sucesso!");
+            form.reset();
+            document.getElementById('editId').value = '';
+            document.getElementById('categoriaId').value = '';
+            loadCategories();
+        } else {
+            showMessage("✕ Erro ao salvar dados.", true);
+        }
+        
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "Salvar Categoria";
+    });
+
+    // READ (Lista categorias)
+    async function loadCategories() {
+        tableBody.innerHTML = '<tr><td colspan="3">Carregando...</td></tr>';
+        const res = await apiCall('read');
+        
+        tableBody.innerHTML = '';
+        
+        // Normalização: Transforma resposta única em array se necessário
+        let categorias = [];
+        if (Array.isArray(res)) {
+            categorias = res;
+        } else if (res && (res._id || res.id)) {
+            categorias = [res];
+        }
+
+        if (categorias.length > 0) {
+            categorias.forEach(cat => {
+                const idBanco = cat._id || cat.id;
+                const nomeCat = cat.nome || "Sem nome";
+                const catIdInterno = cat.categoriaId || "";
+
+                const row = `<tr>
+                    <td>${nomeCat}</td>
+                    <td>${cat.ativo ? '✅' : '❌'}</td>
+                    <td>
+                        <button class="btn btn-edit" onclick="editMode('${idBanco}', '${nomeCat}', ${cat.ativo}, '${catIdInterno}')">Editar</button>
+                        <button class="btn btn-del" onclick="deleteCat('${idBanco}')">Excluir</button>
+                    </td>
+                </tr>`;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Nenhuma categoria encontrada.</td></tr>';
+        }
+    }
+
+    // DELETE
+    window.deleteCat = async (id) => {
+        if (confirm("Deseja realmente excluir esta categoria?")) {
+            const res = await apiCall('delete', { id: id });
+            if (res) loadCategories();
+        }
+    };
+
+    // Prepara formulário para edição
+    window.editMode = (id, nome, ativo, categoriaId) => {
+        document.getElementById('editId').value = id;
+        document.getElementById('categoriaId').value = categoriaId;
+        document.getElementById('nome').value = nome;
+        document.getElementById('ativo').checked = ativo;
+        window.scrollTo(0, 0);
+    };
+
+    function showMessage(text, isError = false) {
+        msgDiv.innerText = text;
+        msgDiv.className = isError ? 'error' : 'success';
+        msgDiv.style.display = 'block';
+        setTimeout(() => msgDiv.style.display = 'none', 3000);
+    }
+
+    // Inicialização
+    if (!lojistaId) {
+        alert("Atenção: ID do lojista (?l=) não identificado.");
+    } else {
+        loadCategories();
+    }
+</script>
+
+</body>
+</html>

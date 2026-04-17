@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Combos - Me Leva</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 800px; }
+        h2 { text-align: center; margin-bottom: 1.5rem; color: #333; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .form-group { margin-bottom: 1rem; }
+        .grid-inputs { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; }
+        label { display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.85rem; font-weight: bold; }
+        input[type="text"], input[type="number"], input[type="datetime-local"] { width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+        input:focus { border-color: #007bff; }
+        
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; margin-top: 10px; }
+        
+        .btn { padding: 0.8rem; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; text-transform: uppercase; font-size: 0.75rem; }
+        .btn-save { background: #007bff; color: white; width: 100%; font-size: 0.9rem; }
+        .btn-save:hover { background: #0056b3; }
+        .btn-edit { background: #ffc107; color: #333; margin-right: 5px; }
+        .btn-del { background: #dc3545; color: white; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 2rem; font-size: 0.9rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        th { background: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.7rem; }
+
+        #message { margin-top: 1rem; text-align: center; padding: 10px; border-radius: 4px; display: none; font-weight: bold; }
+        .success { display: block; background: #d4edda; color: #155724; }
+        .error { display: block; background: #f8d7da; color: #721c24; }
+        .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+        .bg-ativo { background: #d4edda; color: #155724; }
+        .bg-inativo { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Gerenciar Combos</h2>
+    
+    <form id="comboForm">
+        <input type="hidden" id="cupomId">
+
+        <div class="form-group">
+            <label>Nome do Combo</label>
+            <input type="text" id="nome" placeholder="Ex: Combo Família - 2 Xis + Refri" required>
+        </div>
+
+        <div class="grid-inputs">
+            <div class="form-group">
+                <label>Data de Término</label>
+                <input type="datetime-local" id="dataTermino" required>
+            </div>
+            <div class="form-group">
+                <label>Nº de Pessoas</label>
+                <input type="number" id="numPessoas" placeholder="0" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Valor do Desconto (%)</label>
+            <input type="number" id="desconto" step="0.01" placeholder="0%" required>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="ativo" checked>
+            <label for="ativo">Combo Ativo e Visível</label>
+        </div>
+
+        <button type="submit" id="btnSubmit" class="btn btn-save">Salvar Combo</button>
+    </form>
+
+    <div id="message"></div>
+
+    <table id="comboTable">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Expiração</th>
+                <th>Desconto</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            </tbody>
+    </table>
+</div>
+
+<script>
+    const form = document.getElementById('comboForm');
+    const msgDiv = document.getElementById('message');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const tableBody = document.querySelector('#comboTable tbody');
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const lojaId = urlParams.get('l');
+
+    const WEBHOOK_URL = 'https://primary-production-fad5.up.railway.app/webhook/b7fcc846-c71c-4777-8d28-def127121c5c';
+
+    async function apiCall(action, data = {}) {
+        const payload = {
+            action: action,
+            lojaId: lojaId,
+            ...data
+        };
+
+        try {
+            const response = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        } catch (e) {
+            console.error("Erro na requisição:", e);
+            return null;
+        }
+    }
+
+    // CREATE / UPDATE
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        btnSubmit.disabled = true;
+        btnSubmit.innerText = "PROCESSANDO...";
+        
+        const cupomId = document.getElementById('cupomId').value;
+        const action = cupomId ? 'update' : 'create';
+
+        const data = {
+            nome: document.getElementById('nome').value,
+            dataTermino: new Date(document.getElementById('dataTermino').value).toISOString(),
+            numPessoas: parseInt(document.getElementById('numPessoas').value),
+            ativo: document.getElementById('ativo').checked,
+            desconto: parseFloat(document.getElementById('desconto').value)
+        };
+
+        if (cupomId) {
+            data.cupomId = cupomId;
+        } else {
+            data.dataCriacao = new Date().toISOString();
+        }
+
+        const res = await apiCall(action, data);
+
+        if (res && res.status) {
+            showMessage("✓ " + res.status);
+            form.reset();
+            document.getElementById('cupomId').value = '';
+            loadCombos();
+        } else {
+            showMessage("✕ Erro ao processar requisição.", true);
+        }
+        
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = "Salvar Combo";
+    });
+
+    // READ
+    async function loadCombos() {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Carregando...</td></tr>';
+        const res = await apiCall('read');
+        
+        tableBody.innerHTML = '';
+        
+        if (Array.isArray(res) && res.length > 0) {
+            res.forEach(item => {
+                const expira = new Date(item.dataTermino).toLocaleDateString('pt-BR');
+                const row = `<tr>
+                    <td><strong>${item.nome}</strong></td>
+                    <td>${expira}</td>
+                    <td>${parseFloat(item.desconto).toFixed(0)}%</td>
+                    <td><span class="badge ${item.ativo ? 'bg-ativo' : 'bg-inativo'}">${item.ativo ? 'ATIVO' : 'OFF'}</span></td>
+                    <td>
+                        <button class="btn btn-edit" onclick="editMode('${item.cupomId}', '${item.nome}', '${item.dataTermino}', ${item.numPessoas}, ${item.ativo}, ${item.desconto})">Editar</button>
+                        <button class="btn btn-del" onclick="deleteCombo('${item.cupomId}')">Excluir</button>
+                    </td>
+                </tr>`;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum combo encontrado.</td></tr>';
+        }
+    }
+
+    // DELETE
+    window.deleteCombo = async (id) => {
+        if (confirm("Deseja realmente excluir este combo?")) {
+            const res = await apiCall('delete', { cupomId: id });
+            if (res) {
+                showMessage("✓ Excluído com sucesso");
+                loadCombos();
+            }
+        }
+    };
+
+    // EDIT MODE
+    window.editMode = (cupomId, nome, dataTermino, numPessoas, ativo, desconto) => {
+        document.getElementById('cupomId').value = cupomId;
+        document.getElementById('nome').value = nome;
+        
+        // Converte ISO Z para o formato do input datetime-local (YYYY-MM-DDTHH:MM)
+        const date = new Date(dataTermino);
+        date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+        document.getElementById('dataTermino').value = date.toISOString().slice(0, 16);
+        
+        document.getElementById('numPessoas').value = numPessoas;
+        document.getElementById('desconto').value = desconto;
+        document.getElementById('ativo').checked = ativo;
+        
+        btnSubmit.innerText = "Atualizar Combo";
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    function showMessage(text, isError = false) {
+        msgDiv.innerText = text;
+        msgDiv.className = isError ? 'error' : 'success';
+        msgDiv.style.display = 'block';
+        setTimeout(() => msgDiv.style.display = 'none', 3000);
+    }
+
+    if (!lojaId) {
+        alert("Atenção: Parâmetro ?l= não encontrado.");
+    } else {
+        loadCombos();
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+
+url:
+https://primary-production-fad5.up.railway.app/webhook/dd15b276-b4f1-4bd8-8fb8-e40a9f037700
+
+metodo - post
+
+{
+	"loja":
+		{
+		  "confId": "CONF-122769-A9PM",
+		  "lojaId": "LOJA-383294-5Q0B",
+		  "pix": true,
+		  "cartao": true,
+		  "retiradaLocal": false,
+		  "valorTele": 2.5,
+		  "valorMinimo": 10	
+		},
+	"itens":[
+		{
+		  "comboId": "COMB-233584-IAN4",
+		  "lojaId": "LOJA-383294-5Q0B",
+		  "dataCriacao": "2026-04-16T20:43:53.584Z",
+		  "nome": "2 Xis salada + Coca 2L",
+		  "descricao": " ",
+		  "preco": 50,
+		  "ativo": true,
+		  "adicionais": [
+			{
+			  "nome": "+Maionese",
+			  "preco": 2.5,
+			  "descricao": "maionese verde",
+			  "adicionalId": "AD-698100-LLF8"
+			},
+			{
+			  "nome": "+Bacon",
+			  "preco": 3,
+			  "descricao": "dsfdsf",
+			  "adicionalId": "AD-771865-WZC8"
+			}
+		
+		},
+		{
+		  "produtoId": "PROD-618662-7XK0",
+		  "lojaId": "LOJA-383294-5Q0B",
+		  "categoriaId": "CAT-685646-ZGKJ",
+		  "nome": "Xis Salada",
+		  "descricao": "ghgfhfghgfh",
+		  "preco": 13.5,
+		  "ativo": true,
+		  "promocao": false,
+		  "desconto": 0,
+		  "adicionais": [
+			{
+			  "nome": "+Maionese",
+			  "preco": 2.5,
+			  "descricao": "maionese verde",
+			  "adicionalId": "AD-698100-LLF8"
+			}
+		  ]
+		},
+		{
+		  "produtoId": "PROD-618662-7XK0",
+		  "lojaId": "LOJA-383294-5Q0B",
+		  "categoriaId": "CAT-685646-ZGKJ",
+		  "nome": "Xis Salada",
+		  "descricao": "ghgfhfghgfh",
+		  "preco": 13.5,
+		  "ativo": true,
+		  "promocao": false,
+		  "desconto": 0,
+		  "adicionais": [
+			{
+			  "nome": "+Maionese",
+			  "preco": 2.5,
+			  "descricao": "maionese verde",
+			  "adicionalId": "AD-698100-LLF8"
+			}
+		  ]
+		}
+],
+	"cliente":{ // se for tele-entrega
+		"nome":"",
+		"telefone":"",
+		"endereco":"",
+		"numero":"",
+		"bairro":"",
+		"complemento":"",
+	},
+	"formaPagamento":"", //cartao/pix/retiradaLocal
+	"dataCriacao":"", //formato em Z
+	,
+
+
+
+}
