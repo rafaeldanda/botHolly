@@ -487,10 +487,22 @@ async function calcularValorTeleDinamico() {
                 const km = data.routes[0].distance / 1000;
                 
                 // Regra de cálculo (R$ 2.50 por km, mínimo de R$ 5.00)
-                let taxa = km * 2.50;
-                if (taxa < 5) taxa = 5;
+               // let taxa = km * 2.50;
+                //if (taxa < 5) taxa = 5;
 
+                // Puxa as regras das configurações da loja (db.config)
+                const valorPorKm = parseFloat(db.config.valorTele || 2.50);
+                const valorMinimo = parseFloat(db.config.valorMinimo || 5.00);
+                
+                // Realiza o cálculo baseado nos KMs retornados pelo Mapbox
+                let taxa = km * valorPorKm;
+                
+                // Aplica a regra de valor mínimo
+                if (taxa < valorMinimo) taxa = valorMinimo;
+                
+                // Salva o resultado final para o checkout
                 db.config.valorTele = taxa;
+              
                 console.log(`Sucesso: ${km.toFixed(2)}km | Taxa: R$ ${taxa.toFixed(2)}`);
                 
                 if (typeof atualizarCarrinhoUI === "function") {
