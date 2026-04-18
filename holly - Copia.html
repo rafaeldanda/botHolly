@@ -428,7 +428,9 @@
         btn.disabled = true; btn.textContent = "ENVIANDO...";
         const payload = {
             action:"create",
-            cupom: db.cupons.length > 0 ? db.cupons[0].nome : "",
+            // Dentro da função finalizarPedido, altere a linha do cupom para:
+            cupom: cupomAplicado || "",
+            //cupom: db.cupons.length > 0 ? db.cupons[0].nome : "",
             status:"solicitada",
             loja: { 
                 ...db.loja, 
