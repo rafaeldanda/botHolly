@@ -427,7 +427,7 @@
         
         btn.disabled = true; btn.textContent = "ENVIANDO...";
         const payload = {
-            // Substitua a sua linha por esta:
+            action:"create",
             loja: { 
                 ...db.loja, 
                 valorTele: entregaAtiva ? db.config.valorTele : 0 
