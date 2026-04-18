@@ -428,7 +428,7 @@
         btn.disabled = true; btn.textContent = "ENVIANDO...";
         const payload = {
             action:"create",
-            cupom: cupomAplicado ? cupomAplicado.nome : "Nenhum",
+            cupom: db.cupons.length > 0 ? db.cupons[0].nome : "",
             status:"solicitada",
             loja: { 
                 ...db.loja, 
