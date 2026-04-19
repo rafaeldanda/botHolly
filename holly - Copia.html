@@ -359,7 +359,7 @@
 
             <div class="flex gap-2">
                 <button onclick="setEntrega(true)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">ENTREGA</button>
-                <button onclick="setEntrega(false)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${!entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}">RETIRADA</button>
+                <button onclick="setEntrega(false)" class="flex-1 py-3 rounded-xl font-bold text-[10px] border-2 ${!entregaAtiva ? 'border-yellow-400 bg-yellow-400' : 'border-gray-100'}" ${!db.config.retiradaLocal ? 'disabled' : ''}>RETIRADA</button>
             </div>
 
             <div id="endereco-campos" class="${entregaAtiva ? '' : 'hidden'} space-y-2">
@@ -368,8 +368,8 @@
             </div>
 
             <select id="forma-pagamento" class="input-checkout">
-                <option value="pix" ${pagtoAtual === 'pix' ? 'selected' : ''}>PIX</option>
-                <option value="cartao" ${pagtoAtual === 'cartao' ? 'selected' : ''}>CARTÃO</option>
+                <option value="pix" ${pagtoAtual === 'pix' ? 'selected' : '' } ${!db.config.pix ? 'disabled' : ''}>PIX</option>
+                <option value="cartao" ${pagtoAtual === 'cartao' ? 'selected' : ''} ${!db.config.cartao ? 'disabled' : ''}>CARTÃO</option>
             </select>
 
             <div class="pt-4 border-t text-xs font-bold uppercase italic space-y-1">
