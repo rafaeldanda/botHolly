@@ -68,6 +68,14 @@
 </div>
 
 <script>
+
+if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+	
+
     const form = document.getElementById('categoryForm');
     const msgDiv = document.getElementById('message');
     const btnSubmit = document.getElementById('btnSubmit');
@@ -75,7 +83,7 @@
     
     // Captura o parâmetro ?l= da URL
     const urlParams = new URLSearchParams(window.location.search);
-    const lojistaId = urlParams.get('l');
+    const lojaId = urlParams.get('l');
 
     const WEBHOOK_URL = 'https://primary-production-fad5.up.railway.app/webhook/ed3089cf-5e2f-4aa0-bc3f-3c1a827616fa';
 
@@ -83,7 +91,7 @@
     async function apiCall(action, data = {}) {
         const payload = {
             action: action,
-            lojista_id: lojistaId,
+            lojaId: lojaId,
             ...data
         };
 
@@ -118,7 +126,7 @@
         const res = await apiCall(action, data);
 
         // Validação flexível (aceita campo status ou o retorno do objeto salvo)
-        if (res && (res.status || res._id || res.id)) {
+        if (res && (res.status || res.categoriaId || res.id)) {
             showMessage("✓ Operação concluída com sucesso!");
             form.reset();
             document.getElementById('editId').value = '';
@@ -143,13 +151,13 @@
         let categorias = [];
         if (Array.isArray(res)) {
             categorias = res;
-        } else if (res && (res._id || res.id)) {
+        } else if (res && (res.categoriaId || res.id)) {
             categorias = [res];
         }
 
         if (categorias.length > 0) {
             categorias.forEach(cat => {
-                const idBanco = cat._id || cat.id;
+                const idBanco = cat.categoriaId || cat.id;
                 const nomeCat = cat.nome || "Sem nome";
                 const catIdInterno = cat.categoriaId || "";
 
@@ -171,7 +179,7 @@
     // DELETE
     window.deleteCat = async (id) => {
         if (confirm("Deseja realmente excluir esta categoria?")) {
-            const res = await apiCall('delete', { id: id });
+            const res = await apiCall('delete', { categoriaId: id });
             if (res) loadCategories();
         }
     };
@@ -193,7 +201,7 @@
     }
 
     // Inicialização
-    if (!lojistaId) {
+    if (!lojaId) {
         alert("Atenção: ID do lojista (?l=) não identificado.");
     } else {
         loadCategories();

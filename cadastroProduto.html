@@ -104,6 +104,18 @@
 </div>
 
 <script>
+
+
+	if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+
+
+
+
+
     const WEBHOOK_CATS = 'https://primary-production-fad5.up.railway.app/webhook/ed3089cf-5e2f-4aa0-bc3f-3c1a827616fa';
     const WEBHOOK_ADDS = 'https://primary-production-fad5.up.railway.app/webhook/b392fae3-1dff-4817-9bae-7b8cb9c52929';
     const WEBHOOK_PRODUTO = 'https://primary-production-fad5.up.railway.app/webhook/6f8beaac-e8b9-468e-b2b5-c6caf131877c'; 
@@ -120,7 +132,7 @@
             const resCat = await fetch(WEBHOOK_CATS, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: "read", lojista_id: idLoja })
+                body: JSON.stringify({ action: "read", lojaId: idLoja })
             });
             const cats = await resCat.json();
             const sel = document.getElementById('categoriaId');
@@ -130,7 +142,7 @@
             const resAdd = await fetch(WEBHOOK_ADDS, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: "read", lojista_id: idLoja })
+                body: JSON.stringify({ action: "read", lojaId: idLoja })
             });
             dbAdicionais = await resAdd.json();
             const addCont = document.getElementById('adicionaisContainer');

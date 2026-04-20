@@ -180,6 +180,17 @@
     </div>
 
     <script>
+	
+	
+	if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+	
+	
+	
+	
         const form = document.getElementById('cadastroForm');
         const btn = document.getElementById('btnSubmit');
         const msgDiv = document.getElementById('message');

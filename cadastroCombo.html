@@ -94,6 +94,17 @@
 </div>
 
 <script>
+
+
+
+if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+	
+
+
     const WEBHOOK_ADDS = 'https://primary-production-fad5.up.railway.app/webhook/b392fae3-1dff-4817-9bae-7b8cb9c52929';
     const WEBHOOK_COMBOS = 'https://primary-production-fad5.up.railway.app/webhook/6f070c83-fc80-43f4-898c-549dc109346d';
 
@@ -112,7 +123,7 @@
             const res = await fetch(WEBHOOK_ADDS, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: "read", lojista_id: idLoja })
+                body: JSON.stringify({ action: "read", lojaId: idLoja })
             });
             dbAdicionais = await res.json();
             const container = document.getElementById('adicionaisContainer');

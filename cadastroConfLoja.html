@@ -124,6 +124,22 @@
 </div>
 
 <script>
+
+if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+	window.addEventListener('beforeunload', function (e) {
+		// Isso limpa as chaves de acesso antes da página descarregar
+		localStorage.removeItem('painel_logado');
+		localStorage.removeItem('operador_nome');
+		localStorage.removeItem('loja_id_atual');
+		
+	});
+
+
+
     const API_URL = 'https://primary-production-fad5.up.railway.app/webhook/438079aa-505d-434b-b482-4c7226b72f25';
     const urlParams = new URLSearchParams(window.location.search);
     const idLoja = urlParams.get('l');

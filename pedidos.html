@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>Painel de Pedidos - Gestão Real-Time</title>
+    <style>
+        
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; margin: 0; color: #333; }
+    header { background: #1a2a3a; color: white; padding: 1rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    .board { display: flex; gap: 20px; padding: 20px; overflow-x: auto; align-items: flex-start; }
+    .column { background: #ebedf0; border-radius: 8px; min-width: 320px; max-width: 320px; padding: 15px; min-height: 85vh; }
+    .column h2 { font-size: 1.1rem; text-transform: uppercase; color: #5e6c84; border-bottom: 2px solid #dcdfe4; padding-bottom: 10px; margin-top: 0; }
+    .card-pedido { background: white; border-radius: 6px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); border-left: 6px solid #3498db; }
+    .card-pedido h3 { margin: 0 0 8px 0; font-size: 0.95rem; color: #2c3e50; }
+    .card-pedido p { font-size: 0.85rem; margin: 4px 0; line-height: 1.4; }
+    .itens-lista { margin: 10px 0; padding-left: 18px; font-size: 0.85rem; border-top: 1px dashed #eee; padding-top: 10px; list-style-type: square; }
+    .total-section { margin-top: 10px; font-weight: bold; color: #27ae60; border-top: 1px solid #eee; padding-top: 8px; }
+    .actions { display: flex; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+    .btn { border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 0.75rem; flex: 1; text-transform: uppercase; }
+    .btn-print { background: #55acee; color: white; width: 100%; margin-top: 8px; }
+    .btn-next { background: #2ecc71; color: white; }
+
+    
+   
+
+    </style>
+	
+</head>
+<body>
+
+
+    <header>
+        <h1 id="loja-nome">Carregando...</h1></br>
+		<h3 id="loja-url">Carregando...</h3>
+        <small id="loja-info">Sincronizando com servidor...</small>
+    </header>
+
+    <main class="board">
+	
+        <div class="column" id="solicitada">
+            <h2>Solicitados</h2>
+            <div class="items-container"></div>
+        </div>
+        <div class="column" id="em_producao">
+            <h2>Em Produção</h2>
+            <div class="items-container"></div>
+        </div>
+        <div class="column" id="saiu_entrega">
+            <h2>Saiu p/ Entrega</h2>
+            <div class="items-container"></div>
+        </div>
+        <div class="column" id="entregue">
+            <h2>Entregues</h2>
+            <div class="items-container"></div>
+        </div>
+    </main>
+
+    <script>
+	
+	
+	if (localStorage.getItem('painel_logado') !== 'true') {
+		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
+		
+	}
+	
+	
+	
+		
+	let numero = 0;
+	
+	
+        const API_URL = 'https://primary-production-fad5.up.railway.app/webhook/dd15b276-b4f1-4bd8-8fb8-e40a9f037700';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const lojaId = params.get('l');
+
+            if (lojaId) {
+                fetchData(lojaId);
+                // Timer de 1 minuto para atualização automática
+                setInterval(() => fetchData(lojaId), 60000);
+            } else {
+                document.getElementById('loja-nome').innerText = "Parâmetro ?l= ausente";
+            }
+        });
+
+        async function fetchData(lojaId) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: "read", lojaId: lojaId })
+                });
+                const data = await response.json();
+				
+				console.log("peidos " + data.length);
+	
+				if(numero < data.length){
+					dispararAlarme(data.length);
+					numero = data.length;
+				}
+	
+                renderPainel(data);
+            } catch (error) {
+                console.error("Erro na leitura:", error);
+            }
+        }
+
+        async function atualizarStatus(lojaId, corridaId, statusPedido) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: "update",
+                        lojaId: lojaId,
+                        corridaId: corridaId,
+						statusPedido
+                    })
+                });
+                const result = await response.json();
+                if(result.status) {
+                    fetchData(lojaId); // Recarrega o quadro
+                }
+            } catch (error) {
+                alert("Falha ao comunicar atualização.");
+            }
+        }
+
+        function renderPainel(data) {
+		
+            const pedidos = Array.isArray(data) ? data : [data];
+            if (pedidos.length === 0 || !pedidos[0].loja) return;
+
+            // Info da Loja (pelo primeiro pedido)
+            const loja = pedidos[0].loja;
+			const url = `https://rafaeldanda.github.io/botHolly/holly%20-%20Copia.html?l=${loja.lojaId}`;
+            document.getElementById('loja-nome').innerText = loja.nome;
+			document.getElementById('loja-url').innerHTML = `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">Acessar Loja</a>`;
+            document.getElementById('loja-info').innerText = `MEI: ${loja.cnpj} | Porto Alegre, RS | Refesh: ${new Date().toLocaleTimeString('pt-BR')}`;
+
+            // Limpa as colunas
+            document.querySelectorAll('.items-container').forEach(c => c.innerHTML = '');
+
+            // Renderiza cada pedido
+            pedidos.forEach(p => {
+                const status = p.status || 'solicitada';
+                const container = document.getElementById(status)?.querySelector('.items-container');
+                if (container) {
+                    container.appendChild(criarCard(p));
+                }
+            });
+        }
+
+      function criarCard(p) {
+    const card = document.createElement('div');
+    card.className = 'card-pedido';
+    
+    // O SEGREDO: Salva os dados do pedido 'p' dentro do próprio elemento HTML
+    card.dataset.pedido = JSON.stringify(p);
+    
+    const corridaId = p.carrinhoId || p._id;
+    const lojaId = p.loja.lojaId;
+    const statusPedido = p.status;
+    
+    let txtBotao = "Avançar";
+    if(p.status === 'solicitada') txtBotao = "Iniciar Produção";
+    if(p.status === 'em_producao') txtBotao = "Despachar";
+    if(p.status === 'saiu_entrega') txtBotao = "Confirmar Entrega";
+	
+	
+    
+	const itensHtml = p.itens.map(item => `
+        <li>
+            <strong>${item.nome}</strong>
+            ${item.adicionais.length ? `<br><small style="color:#777">${item.adicionais.map(a => a.nome).join(', ')}</small>` : ''}
+            ${item.obs ? `<br><em style="color:#e67e22">Obs: ${item.obs}</em>` : ''}
+        </li>
+    `).join('');
+	
+    card.innerHTML = `
+        <div class="print-area">
+            <h3>PEDIDO: ${corridaId.slice(-6).toUpperCase()}</h3>
+            <p><strong>Cliente:</strong> ${p.cliente.nome}</p>
+            <p><strong>Tel:</strong> ${p.cliente.telefone}</p>
+            <p><strong>Endereço:</strong> ${p.cliente.endereco}</p>
+            <ul class="itens-lista">${itensHtml}</ul>
+            <div class="total-section">
+                Total: R$ ${p.totalPedido.toFixed(2)}
+                ${p.totalTele > 0 ? `<br><small style="font-weight:normal">Taxa Entrega: R$ ${p.totalTele.toFixed(2)}</small>` : ''}
+                ${p.cupom ? `<br><small style="font-weight:normal; color: #e74c3c;">Cupom Usado: ${p.cupom}</small>` : ''}
+            </div>
+        </div>
+        <div class="actions">
+            ${p.status !== 'entregue' ? `<button class="btn btn-next" onclick="atualizarStatus('${lojaId}', '${corridaId}', '${statusPedido}')">${txtBotao}</button>` : ''}
+        </div>
+        <button class="btn btn-print" onclick="imprimir(this)">Imprimir Cupom</button>
+    `;
+    return card;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+	
+function imprimir(btn) {
+
+    // 1. Localiza o card e resgata os dados que salvamos no card.dataset
+    const card = btn.closest('.card-pedido');
+    const p = JSON.parse(card.dataset.pedido);
+
+    // 2. Cria um iframe invisível se não existir
+    let iframe = document.getElementById('iframe_impressao');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'iframe_impressao';
+        iframe.style.position = 'absolute';
+        iframe.style.top = '-9999px'; 
+        document.body.appendChild(iframe);
+    }
+
+    // 3. Monta o cupom formatado para impressora térmica
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+        <html>
+            <head>
+                <style>
+                    body { font-family: 'Courier New', monospace; font-size: 13px; color: #000; margin: 0; padding: 10px; }
+                    h2 { margin: 0; font-size: 16px; text-align: center; }
+                    .divisa { border-top: 1px dashed #000; margin: 5px 0; }
+                </style>
+            </head>
+            <body>
+				
+				<center><h1>Pedido: ${p.carrinhoId.toUpperCase()}</h1></center></br>
+                <h2>${p.loja.nome.toUpperCase()}</h2>
+				<strong>CNPJ:</strong> ${p.loja.cnpj}<br>
+				<strong>Endereço:</strong> ${p.loja.endereco.rua}, ${p.loja.endereco.numero} - ${p.loja.endereco.bairro}, - ${p.loja.endereco.complemento}<br>
+                <div class="divisa"></div>
+				<center>Pedido!</center>
+                <strong>PEDIDO: #${p.carrinhoId.slice(-6).toUpperCase()}</strong><br>
+                DATA: ${new Date(p.dataCriacao).toLocaleDateString('pt-BR')} ${new Date(p.dataCriacao).toLocaleTimeString('pt-BR')}<br>
+                <div class="divisa"></div>
+				<center>Cliente!</center>
+                <strong>CLIENTE:</strong> ${p.cliente.nome}<br>
+                <strong>TEL:</strong> ${p.cliente.telefone}<br>
+                <strong>END:</strong> ${p.cliente.endereco}<br>
+                <div class="divisa"></div>
+                <strong>ITENS:</strong><br>               
+				${p.itens.map(i => `
+    <strong>- ${i.nome}</strong><br>
+    ${i.adicionais.length > 0 
+        ? `<small>  + ${i.adicionais.map(a => a.nome).join(', ')}</small><br>` 
+        : ''
+    }
+    ${i.obs ? `<small>  <em>Obs: ${i.obs}</em></small><br>` : ''}
+`).join('')}
+                <div class="divisa"></div>
+                <strong>TOTAL: R$ ${p.totalPedido.toFixed(2)}</strong>
+                <div class="divisa"></div>
+                <center>Obrigado pela preferência!</center>
+            </body>
+        </html>
+    `);
+    doc.close();
+
+    // 4. Dispara a impressão
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }, 300);
+}
+	
+	
+	
+	
+
+	
+		// Primeiro, criamos a função de pausa (só precisa criar uma vez)
+		const delay = ms => new Promise(res => setTimeout(res, ms));
+
+		// Criamos uma função para tocar o alarme
+		async function dispararAlarme(cont) {
+			//console.log(cont);
+			const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+				
+			for (let i = 0; i <= 5; i++) {
+				audio.play().catch(e => console.log("Interação necessária"));
+				
+				// Agora o código realmente espera 1000ms (1 segundo) antes de repetir
+				await delay(1000); 
+				
+				// Dica: reseta o áudio para o início para garantir que ele toque de novo
+				audio.currentTime = 0; 
+			}		
+   
+		}
+
+
+	
+	
+		
+	
+	
+	
+	
+	
+	
+	
+		
+    </script>
+</body>
+</html>

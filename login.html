@@ -124,8 +124,8 @@
             <button type="submit" id="btnSubmit">Entrar</button>
 
             <div class="form-footer">
-                <a href="#">Esqueci minha senha</a>
-                <a href="#">Cadastrar</a>
+                <a href="esqueciSenha.html">Esqueci minha senha</a>
+                <a href="cadastroLoja.html">Cadastrar</a>
             </div>
             
             <p id="message"></p>
@@ -166,15 +166,37 @@
                 });
 
                 if (response.ok) {
-                    message.style.color = "green";
-                    message.innerText = "✓ Dados enviados com sucesso!";
+                   // 1. Pegamos a resposta do servidor (ex: se é admin ou o nome do usuário)
+						const data = await response.json();
+						const infoUsuario = Array.isArray(data) ? data[0] : data;
+
+						// 2. Feedback visual positivo
+						message.style.color = "green";
+						message.innerText = "✓ Login realizado com sucesso! Redirecionando...";
+
+						// 3. SALVAR A "CHAVE" DE ACESSO
+						// Isso é o que o seu outro arquivo HTML procura para deixar entrar
+						localStorage.setItem('painel_logado', 'true');
+						localStorage.setItem('operador_nome', infoUsuario.lojaId || 'Usuário');
+
+						// O ?. garante que se 'loja' não existir, o código não trave
+						const idDaLoja = infoUsuario.loja?.lojaId || infoUsuario.lojaId;
+
+						// 4. REDIRECIONAMENTO
+						// Aguarda 1 segundo para o usuário ler a mensagem e pula para o painel
+						setTimeout(() => {
+							window.location.href = "inicio.html?l="+idDaLoja; 
+						}, 3500);
+										
                     loginForm.reset();
+					
+
                 } else {
                     throw new Error('Erro no servidor');
                 }
             } catch (error) {
                 message.style.color = "red";
-                message.innerText = "✕ Erro ao conectar com o servidor da Railway.";
+                message.innerText = "✕ Erro ao conectar com o servidor.";
                 console.error('Erro detalhado:', error);
             } finally {
                 btnSubmit.disabled = false;
