@@ -125,10 +125,7 @@
 
 <script>
 
-if (localStorage.getItem('painel_logado') !== 'true') {
-		window.location.href = 'login.html'; // Expulsa se tentar entrar direto pela URL
-		
-	}
+
 	
 	window.addEventListener('beforeunload', function (e) {
 		// Isso limpa as chaves de acesso antes da página descarregar
