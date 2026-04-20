@@ -318,6 +318,7 @@
     const telAtual = document.getElementById('cli-tel')?.value || "";
     const ruaAtual = document.getElementById('cli-end')?.value || "";
     const numAtual = document.getElementById('cli-num')?.value || "";
+	const comp = document.getElementById('cli-comp')?.value || "";
     const pagtoAtual = document.getElementById('forma-pagamento')?.value || "pix";
     const cupomAtual = document.getElementById('input-cupom')?.value || "";
 
@@ -365,6 +366,7 @@
             <div id="endereco-campos" class="${entregaAtiva ? '' : 'hidden'} space-y-2">
                 <input type="text" id="cli-end" value="${ruaAtual || db.rua || ''}" placeholder="Rua / Bairro" class="input-checkout">
                 <input type="text" id="cli-num" value="${numAtual}" placeholder="Número" class="input-checkout" onblur="calcularValorTeleDinamico()">
+				<input type="text" id="cli-comp" value="${comp}" placeholder="Complemento" class="input-checkout" >
             </div>
 
             <select id="forma-pagamento" class="input-checkout">
@@ -440,7 +442,7 @@
            cliente: { 
                 nome, 
                 telefone: tel, 
-                endereco: entregaAtiva ? `${document.getElementById('cli-end').value}, ${document.getElementById('cli-num').value}` : "RETIRADA" 
+                endereco: entregaAtiva ? `${document.getElementById('cli-end').value}, ${document.getElementById('cli-num').value}, ${document.getElementById('cli-comp').value}` : "RETIRADA"
             },
             totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo
         };
