@@ -171,23 +171,28 @@
 		to { opacity: 1; transform: translateY(0); }
 	}
 		
-		.video-responsivo {
-			position: relative;
-			padding-bottom: 56.25%; /* Isso cria a proporção 16:9 */
-			height: 0;
-			overflow: hidden;
-			width: 100%; /* Ocupa toda a largura disponível */
-			border-radius: 12px; /* Opcional: deixa as bordas arredondadas */
-		}
+		/* Garante que o conteúdo do card apareça */
+.card-content {
+    display: block;
+    width: 100%;
+    min-height: 200px; /* Dá um espaço para o vídeo não sumir */
+    margin-top: 15px;
+}
 
-		.video-responsivo iframe {
-			position: absolute;
-			top: 0;
-			left: 0;
-			width: 100%;
-			height: 100%;
-			border: 0;
-		}
+.video-responsivo {
+    position: relative;
+    padding-bottom: 56.25%;
+    height: 0;
+    overflow: hidden;
+}
+
+.video-responsivo iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
 		
 		
     </style>
@@ -239,15 +244,16 @@
 			<div class="card-content">
 			
 				<div class="video-responsivo">
-					<iframe 
-					    class="video-responsivo"
-					    width="100%" 
-					    height="200" 
-					    src="https://www.youtube.com/embed/S8e_gwdonRc" 
-					    frameborder="0" 
-					    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-					    allowfullscreen>
-					</iframe>
+					
+				    <iframe 
+				        width="100%" 
+				        height="200" 
+				        src="https://www.youtube.com/embed/S8e_gwdonRc" 
+				        frameborder="0" 
+				        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+				        allowfullscreen>
+				    </iframe>
+
 				</div>
 				
 			</div>
