@@ -379,6 +379,10 @@
     const pagtoAtual = document.getElementById('forma-pagamento')?.value || "pix";
     const cupomAtual = document.getElementById('input-cupom')?.value || "";
 
+
+	
+
+
     // --- 2. RENDERIZA OS ITENS (Parte de cima) ---
     if (carrinho.length === 0) {
         itemsCont.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-30 italic font-black py-20 uppercase">Carrinho Vazio</div>`;
@@ -440,6 +444,8 @@
 
             <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full bg-yellow-400 py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all">Confirmar Pedido</button>
         </div>`;
+		
+		
 }
 
     function aplicarCupom() {
@@ -479,9 +485,15 @@
     function setEntrega(s) { entregaAtiva = s; atualizarCarrinhoUI(); }
 
     async function finalizarPedido() {
+		
+	    console.log("pagamento " + pagamentoAtual);
         const btn = document.getElementById('btn-finalizar');
         const nome = document.getElementById('cli-nome').value;
         const tel = document.getElementById('cli-tel').value;
+		
+		let pagamentoAtual = document.getElementById('forma-pagamento').value;
+		
+		
         if (!nome || !tel) return alert("Dados faltantes!");
         
         btn.disabled = true; btn.textContent = "ENVIANDO...";
@@ -501,12 +513,14 @@
                 telefone: tel, 
                 endereco: entregaAtiva ? `${document.getElementById('cli-end').value}, ${document.getElementById('cli-num').value}, ${document.getElementById('cli-comp').value}` : "RETIRADA"
             },
-            totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo
+            totalPedido: (carrinho.reduce((acc, i) => acc + i.valorFinal, 0) + (entregaAtiva ? parseFloat(db.config.valorTele) : 0)) - descontoAtivo,
+			formaPagamento: pagamentoAtual
         };
 
         try {
             const res = await fetch(ENDPOINTS.enviarPedido, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (res.ok) { alert("Sucesso!"); window.location.reload(); }
+			
         } catch (e) { alert("Erro."); } finally { btn.disabled = false; }
     }
 
@@ -611,7 +625,7 @@ function footer() {
                 <span><strong>CNPJ:</strong> ${db.loja.cnpj}</span>
             </div>
             <div class="copyright">
-                &copy; 2026 HollyBrasil. Todos os direitos reservados.
+                &copy; 2026 HollyBrazil. Todos os direitos reservados.
             </div>
         </div>
     </footer>`;
