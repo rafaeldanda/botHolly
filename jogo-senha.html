@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Desafio Senha - BotHolly</title>
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --board-bg: #d2b48c; /* Cor de madeira como na foto */
+            --peg-size: 35px; /* Tamanho do pino no celular */
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        /* O Tabuleiro Principal */
+        .board {
+            background-color: var(--board-bg);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column-reverse; /* Mostra as tentativas de baixo para cima */
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .row.active {
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 8px;
+        }
+
+        /* Os Pinos Grandes (Tentativas) */
+        .pegs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .peg {
+            width: var(--peg-size);
+            height: var(--peg-size);
+            background-color: rgba(0,0,0,0.15);
+            border-radius: 50%;
+            border: 2px solid #5d4037;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .active .peg:hover { transform: scale(1.1); }
+
+        /* As Cores Disponíveis */
+        .color-palette {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .color-choice {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+        }
+
+        .color-choice.selected { border-color: white; transform: scale(1.1); }
+
+        /* Os Pinos de Feedback (Branco/Preto) */
+        .feedback {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+            width: calc(var(--peg-size) * 0.8);
+            height: calc(var(--peg-size) * 0.8);
+        }
+
+        .f-peg {
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border: 1px solid #5d4037;
+        }
+
+        .black { background-color: #000 !important; border-color: #000 !important; }
+        .white { background-color: #fff !important; border-color: #fff !important; }
+
+        /* Senha Secreta (Escondida) */
+        #secret {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        #secret .peg.hidden { background-color: #444; color: #aaa; text-align: center; line-height: var(--peg-size); font-weight: bold; }
+
+        button#checkBtn {
+            margin-top: 15px;
+            padding: 10px 30px;
+            background: #27ae60;
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .legenda-container {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px dashed #ffd700;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-width: 400px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .legenda-container h3 {
+            margin-top: 0;
+            color: #ffd700;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .item-legenda {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+        }
+
+        .pino-exemplo {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 1px solid #5d4037;
+            display: inline-block;
+        }
+
+        .pino-exemplo.preto { background-color: #000; }
+        .pino-exemplo.branco { background-color: #fff; }
+        .pino-exemplo.vazio { background-color: rgba(0,0,0,0.1); }
+
+        small {
+            display: block;
+            margin-top: 10px;
+            color: #aaa;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Desafio Senha</h1>
+    <p>Adivinhe a senha de 4 cores em 10 tentativas.</p>
+
+    <div id="secret">
+        <div class="peg hidden">?</div>
+        <div class="peg hidden">?</div>
+        <div class="peg hidden">?</div>
+        <div class="peg hidden">?</div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <button id="checkBtn" onclick="verificarTentativa()">CONFIRMAR</button>
+
+    <div class="color-palette" id="palette"></div>
+
+    <div class="legenda-container">
+        <h3>Como Jogar? 💡</h3>
+        <p>Adivinhe a senha de 4 cores. Após cada tentativa, os pinos laterais indicam:</p>
+        
+        <div class="item-legenda">
+            <span class="pino-exemplo preto"></span>
+            <span><b>Pino Preto:</b> Cor certa no lugar certo!</span>
+        </div>
+        
+        <div class="item-legenda">
+            <span class="pino-exemplo branco"></span>
+            <span><b>Pino Branco:</b> Cor existe, mas no lugar errado.</span>
+        </div>
+        
+        <div class="item-legenda">
+            <span class="pino-exemplo vazio"></span>
+            <span><b>Vazio:</b> Essa cor não existe na senha.</span>
+        </div>
+        
+        <p><small>*As cores na senha não se repetem!<br>*A ordem dos pinos de dica não corresponde à ordem das cores!</small></p>
+    </div>
+
+    <script>
+        const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+        let secretCode = [];
+        let currentTry = 0;
+        let selectedColor = null;
+
+        const board = document.getElementById('board');
+        const palette = document.getElementById('palette');
+        const checkBtn = document.getElementById('checkBtn');
+
+        // 1. Iniciar Jogo
+        function initGame() {
+            // Lógica de não repetição: Embaralha as cores disponíveis e pega as 4 primeiras
+            let asCoresDisponiveis = [...COLORS];
+            for (let i = asCoresDisponiveis.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [asCoresDisponiveis[i], asCoresDisponiveis[j]] = [asCoresDisponiveis[j], asCoresDisponiveis[i]];
+            }
+            secretCode = asCoresDisponiveis.slice(0, 4);
+
+            // Criação do tabuleiro
+            for (let i = 0; i < 10; i++) {
+                const row = document.createElement('div');
+                row.className = `row ${i === 0 ? 'active' : ''}`;
+                row.innerHTML = `
+                    <span style="font-size:0.8rem; color:#5d4037">Try ${i + 1}:</span>
+                    <div class="pegs">
+                        <div class="peg" data-index="0"></div>
+                        <div class="peg" data-index="1"></div>
+                        <div class="peg" data-index="2"></div>
+                        <div class="peg" data-index="3"></div>
+                    </div>
+                    <div class="feedback">
+                        <div class="f-peg"></div><div class="f-peg"></div>
+                        <div class="f-peg"></div><div class="f-peg"></div>
+                    </div>
+                `;
+                board.appendChild(row);
+            }
+            
+            initPalette(); 
+            activateRow();
+        }
+
+        function initPalette() {
+            palette.innerHTML = "";
+            COLORS.forEach(color => {
+                const choice = document.createElement('div');
+                choice.className = 'color-choice';
+                choice.style.backgroundColor = color;
+                choice.onclick = () => selectColor(choice, color);
+                palette.appendChild(choice);
+            });
+        }
+
+        function selectColor(element, color) {
+            document.querySelectorAll('.color-choice').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedColor = color;
+        }
+
+        function activateRow() {
+            const activePegs = document.querySelector('.row.active .pegs').children;
+            Array.from(activePegs).forEach(peg => {
+                peg.onclick = () => {
+                    if (!selectedColor) return;
+                    peg.style.backgroundColor = selectedColor;
+                    peg.dataset.color = selectedColor;
+                    checkIfRowFull();
+                };
+            });
+        }
+
+        function checkIfRowFull() {
+            const activePegs = document.querySelector('.row.active .pegs').children;
+            const isFull = Array.from(activePegs).every(peg => peg.dataset.color);
+            checkBtn.style.display = isFull ? 'block' : 'none';
+        }
+
+        function verificarTentativa() {
+            const activeRow = document.querySelector('.row.active');
+            const userPegs = Array.from(activeRow.querySelector('.pegs').children);
+            const userCode = userPegs.map(peg => peg.dataset.color);
+
+            let blackPegs = 0;
+            let whitePegs = 0;
+
+            let secretTemp = [...secretCode];
+            let userTemp = [...userCode];
+
+            // 1ª Passada: Pinos Pretos
+            userCode.forEach((color, i) => {
+                if (color === secretTemp[i]) {
+                    blackPegs++;
+                    secretTemp[i] = userTemp[i] = null;
+                }
+            });
+
+            // 2ª Passada: Pinos Brancos
+            userTemp.forEach((color, i) => {
+                if (color === null) return;
+                const matchIndex = secretTemp.indexOf(color);
+                if (matchIndex !== -1) {
+                    whitePegs++;
+                    secretTemp[matchIndex] = null;
+                }
+            });
+
+            displayFeedback(activeRow, blackPegs, whitePegs);
+
+            if (blackPegs === 4) {
+                win();
+            } else {
+                nextTurn();
+            }
+        }
+
+        function displayFeedback(row, black, white) {
+            const feedbackPegs = row.querySelectorAll('.f-peg');
+            let fIndex = 0;
+            for (let i = 0; i < black; i++) { feedbackPegs[fIndex++].classList.add('black'); }
+            for (let i = 0; i < white; i++) { feedbackPegs[fIndex++].classList.add('white'); }
+        }
+
+        function nextTurn() {
+            const activeRow = document.querySelector('.row.active');
+            activeRow.classList.remove('active');
+            currentTry++;
+            checkBtn.style.display = 'none';
+
+            if (currentTry < 10) {
+                const nextRow = board.children[currentTry];
+                nextRow.classList.add('active');
+                activateRow();
+            } else {
+                gameOver();
+            }
+        }
+
+        function revealSecret() {
+            const secretDivs = document.getElementById('secret').children;
+            secretCode.forEach((color, i) => {
+                secretDivs[i].classList.remove('hidden');
+                secretDivs[i].style.backgroundColor = color;
+                secretDivs[i].textContent = "";
+            });
+        }
+
+        function win() {
+            revealSecret();
+            alert("PARABÉNS! Você adivinhou o segredo e ganhou o prêmio!");
+        }
+
+        function gameOver() {
+            revealSecret();
+            alert("VOCÊ PERDEU! Acabaram as tentativas.");
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
