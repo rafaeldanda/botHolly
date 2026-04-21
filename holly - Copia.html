@@ -79,6 +79,59 @@
             font-size: 10px;
             margin-top: 4px;
         }
+		
+		footer {
+        background-color: #ffffff; /* Fundo Branco */
+        color: #333333;           /* Texto Grafite Escuro para melhor leitura */
+        padding: 30px 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        text-align: center;
+        font-size: 14px;
+        border-top: 1px solid #e0e0e0; /* Linha sutil para separar do conteúdo */
+    }
+
+    .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .footer-info span {
+        margin: 0 15px;
+        display: inline-block;
+        color: #555555; /* Cor levemente mais suave para os detalhes */
+    }
+
+    .footer-info strong {
+        color: #000000; /* Negrito em preto total para destaque */
+    }
+
+    .copyright {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #888888;
+    }
+
+    /* Ajuste para links (caso você adicione algum) */
+    footer a {
+        color: #007bff;
+        text-decoration: none;
+    }
+
+    footer a:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+        .footer-info span {
+            display: block;
+            margin: 8px 0;
+        }
+    }
+		
+		
     </style>
 </head>
 <body class="bg-gray-50 pb-24 text-gray-900">
@@ -119,8 +172,11 @@
             <div id="cart-footer"></div>
         </div>
     </div>
-
+	
     <script>
+	
+	
+	
     const API_BASE = "https://primary-production-fad5.up.railway.app/webhook";
     const ENDPOINTS = {
         loja: `${API_BASE}/55f8cc8e-b4d2-4869-a40c-0325e0948e79`,
@@ -184,6 +240,7 @@
             };
 
             renderInterface();
+			footer();
         } catch (err) {
             console.error("Erro crítico no Init:", err);
             // Tenta renderizar mesmo com erro para tirar o "Carregando"
@@ -543,7 +600,25 @@ async function calcularValorTeleDinamico() {
 }
 
 
+function footer() {
+    // Definimos o HTML que queremos inserir
+    const htmlFooter = `
+    <footer>
+        <div class="footer-content">
+            <div class="footer-info">
+                <span><strong>Endereço:</strong> ${db.loja.endereco.rua}, ${db.loja.endereco.numero}</span>
+                <span><strong>Telefone:</strong> ${db.loja.telefone}</span>
+                <span><strong>CNPJ:</strong> ${db.loja.cnpj}</span>
+            </div>
+            <div class="copyright">
+                &copy; 2026 Nome da Sua Empresa. Todos os direitos reservados.
+            </div>
+        </div>
+    </footer>`;
 
+    // "beforeend" coloca o conteúdo no final do body, logo antes de fechar a tag </body>
+    document.body.insertAdjacentHTML('beforeend', htmlFooter);
+}
 
 
 
@@ -557,6 +632,7 @@ async function calcularValorTeleDinamico() {
 
     // Roda o Init
     init();
+	
     </script>
 </body>
 </html>
