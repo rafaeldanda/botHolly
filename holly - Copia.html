@@ -130,6 +130,64 @@
             margin: 8px 0;
         }
     }
+	
+	
+		/* A camada que cobre a tela toda */
+	.modal-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.6); /* Fundo escurecido */
+		display: none;
+		justify-content: center; /* Centraliza horizontalmente */
+		align-items: center;     /* Centraliza verticalmente */
+		z-index: 1000;           /* Garante que fique acima de tudo */
+	}
+
+	/* O Card em si */
+	.card {
+		background: white;
+		padding: 24px;
+		border-radius: 12px;
+		box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+		width: 90%;
+		max-width: 400px;
+		animation: surgir 0.3s ease-out;
+	}
+
+	.card-actions {
+		display: flex;
+		justify-content: center; /* Mudou de flex-end para center */
+		gap: 10px;
+		margin-top: 20px;
+		width: 100%; /* Garante que o container ocupe a largura total do card */
+	}
+
+	/* Animação para o card não aparecer de soco */
+	@keyframes surgir {
+		from { opacity: 0; transform: translateY(-20px); }
+		to { opacity: 1; transform: translateY(0); }
+	}
+		
+		.video-responsivo {
+			position: relative;
+			padding-bottom: 56.25%; /* Isso cria a proporção 16:9 */
+			height: 0;
+			overflow: hidden;
+			width: 100%; /* Ocupa toda a largura disponível */
+			border-radius: 12px; /* Opcional: deixa as bordas arredondadas */
+		}
+
+		.video-responsivo iframe {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			border: 0;
+		}
 		
 		
     </style>
@@ -173,6 +231,30 @@
         </div>
     </div>
 	
+	<div id="modal-container" class="modal-overlay">
+		<div class="card">
+			<h3>Finalizar Pedido</h3></br>
+			<small>Fique atento ao celular ou a chegada do entregador.</small>
+			<hr>
+			<div class="card-content">
+			
+			<div class="video-responsivo"><iframe 
+					width="560" 
+					height="315" 
+					src="https://www.youtube.com/watch?v=4AImUL9_IDs&list=RDVLvo67iVxr8&index=21" 
+					title="YouTube video player" 
+					frameborder="0" 
+					allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+					allowfullscreen>
+				</iframe>
+			</div>
+				
+			</div>
+			<div class="card-actions">
+				<button class="btn-secundario" onclick="fecharModal()">Confirmar</button>				
+			</div>
+		</div>
+	</div>
     <script>
 	
 	
@@ -486,7 +568,7 @@
 
     async function finalizarPedido() {
 		
-	  
+	   
         const btn = document.getElementById('btn-finalizar');
         const nome = document.getElementById('cli-nome').value;
         const tel = document.getElementById('cli-tel').value;
@@ -519,8 +601,8 @@
 
         try {
             const res = await fetch(ENDPOINTS.enviarPedido, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) { alert("Sucesso!"); window.location.reload(); }
-			
+            //if (res.ok) { alert("Sucesso!"); window.location.reload(); }
+			if (res.ok) { mostrarModal(); }
         } catch (e) { alert("Erro."); } finally { btn.disabled = false; }
     }
 
@@ -635,7 +717,14 @@ function footer() {
 }
 
 
+	function mostrarModal() {
+		document.getElementById('modal-container').style.display = 'flex';
+	}
 
+	function fecharModal() {
+		document.getElementById('modal-container').style.display = 'none';
+		window.location.reload();
+	}
 
 
 
