@@ -25,7 +25,7 @@
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         label.field-label { font-weight: 600; font-size: 14px; color: #475569; }
-        input[type="number"] { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; }
+        input[type="number"],[type="text"],[type="url"] { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; }
         input:focus { border-color: var(--primary); }
 
         /* Grupo de opções estilo Card para os Toggles */
@@ -81,6 +81,10 @@
             <div class="form-group">
                 <label class="field-label">Valor da Tele Minimo (R$)</label>
                 <input type="number" id="valorMinimo" step="0.01" placeholder="0.00">
+            </div>
+			<div class="form-group">
+                <label class="field-label">Link de Agradecimento</label>
+                <input type="url" id="linkCarrinho"  placeholder="https://youtube.com.br/......."/>
             </div>
         </div>
 
@@ -169,6 +173,7 @@
                 // Garante que se vier vazio, não quebre o layout
                 document.getElementById('valorTele').value = data.valorTele !== undefined ? data.valorTele : "";
                 document.getElementById('valorMinimo').value = data.valorMinimo !== undefined ? data.valorMinimo : "";
+				document.getElementById('linkCarrinho').value = data.linkCarrinho !== undefined ? data.linkCarrinho : "";
                 
                 showMsg("Configurações carregadas!", "#dcfce7");
                 setTimeout(() => document.getElementById('msgStatus').style.display = 'none', 2000);
@@ -189,7 +194,8 @@
             cartao: document.getElementById('cartao').checked,
             retiradaLocal: document.getElementById('retiradaLocal').checked,
             valorTele: parseFloat(document.getElementById('valorTele').value || 0),
-            valorMinimo: parseFloat(document.getElementById('valorMinimo').value || 0)
+            valorMinimo: parseFloat(document.getElementById('valorMinimo').value || 0),
+			linkCarrinho: document.getElementById('linkCarrinho').value.trim() || ""
         };
 
         showMsg("Salvando...", "#dbeafe");
