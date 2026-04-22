@@ -195,6 +195,15 @@
 }
 		
 		
+		.container-site {
+			display: flex;
+			justify-content: center; /* Alinha horizontalmente */
+			align-items: center;     /* Alinha verticalmente (se o container tiver altura) */
+			width: 100%;             /* Garante que o container ocupe a largura toda */
+			margin: 20px 0;         /* Espaçamento em cima e embaixo */
+		}
+		
+		
     </style>
 </head>
 <body class="bg-gray-50 pb-24 text-gray-900">
@@ -236,11 +245,10 @@
         </div>
     </div>
 	
-	<div id="modal-container" class="modal-overlay"> <!--  -----------------------------  -->
+	<div id="modal-container" class="modal-overlay"> 
 		<div class="card">
 			<h3>Finalizar Pedido</h3></br>
-			<small>Fique atento ao celular ou a chegada do entregador.</small>
-			<hr>
+			<small>Fique atento ao celular ou a chegada do entregador.</small>			
 			<div class="card-content">
 			
 				
@@ -722,8 +730,8 @@ function footer() {
 		const videoId = urlOriginal.split('v=')[1] || urlOriginal.split('/').pop();
 		const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 		console.log(`https://www.youtube.com/embed/${videoId}`);
-		if(videoId !== ""){container.innerHTML = `<div class="video-responsivo"><iframe width="100%" height="200" src="${embedUrl}" frameborder="0" allowfullscreen></iframe></div>`;}
-		
+		if(videoId !== ""){container.innerHTML = `<div class="video-responsivo"><iframe width="100%" height="200" src="${embedUrl}" frameborder="0" allowfullscreen></iframe></div></br>`;}
+		if(db.config.raspadinha){container.innerHTML +='<div class="container-site"><iframe src="raspadinha.html" width="250" height="250" frameborder="0" allowfullscreen/></div>';}
 		
 	}
 

@@ -12,15 +12,15 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #1a1a1a;
+            background-color: white;
             color: white;
             font-family: sans-serif;
         }
 
         .container {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 200px;
+            height: 200px;
             user-select: none;
             border: 5px solid #ffd700;
             border-radius: 15px;
@@ -62,20 +62,16 @@
     </style>
 </head>
 <body>
-
-    <h1>Tente a Sorte!</h1>
-    
+   
     <div class="container">
         <div class="premio">
             <h2>GANHOU!</h2>
             <p>10% OFF</p>
             <span>CÓDIGO: HOLLY10</span>
         </div>
-
+		
         <canvas id="raspadinha" width="300" height="300"></canvas>
     </div>
-
-    <p class="instrucao">Passe o mouse ou o dedo para raspar</p>
 
     <script>
         const canvas = document.getElementById('raspadinha');
