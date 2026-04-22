@@ -732,7 +732,17 @@ function footer() {
 		console.log(`https://www.youtube.com/embed/${videoId}`);
 		if(videoId !== ""){container.innerHTML = `<div class="video-responsivo"><iframe width="100%" height="200" src="${embedUrl}" frameborder="0" allowfullscreen></iframe></div></br>`;}
 		if(db.config.raspadinha){container.innerHTML += '<div class="container-site"><iframe src="raspadinha.html" width="250" height="250" frameborder="0" allowfullscreen/></div>';}
-			
+		// Estilizado com as cores do TikTok para ficar profissional
+container.innerHTML += `
+    <div style="display: flex; justify-content: center; margin: 20px 0;">
+        <a href="https://vt.tiktok.com/ZS9NNx6HaR4eg-9rZ4f/" 
+           target="_blank" 
+           style="background: #000; color: #fff; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-family: sans-serif; display: flex; align-items: center; gap: 10px;">
+           <svg width="20" height="20" fill="currentColor" viewBox="0 0 448 512"><path d="M448 209.91a210.06 210.06 0 0 1-122.77-39.25V349.38A162.55 162.55 0 1 1 185 188.31V278.2a74.62 74.62 0 1 0 52.23 71.18V0l88 0a121.18 121.18 0 0 0 1.86 22.17A122.18 122.18 0 0 0 381 102.39a121.43 121.43 0 0 0 67 20.14z"/></svg>
+           ABRIR NO TIKTOK
+        </a>
+    </div>
+`;	
 			
 	}
 	
@@ -764,7 +774,7 @@ function footer() {
 
     // Roda o Init
     init();
-	abrirTikTok("rafaeldanda8");
+	//abrirTikTok("rafaeldanda8");
 	
     </script>
 </body>
