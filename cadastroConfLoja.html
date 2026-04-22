@@ -195,7 +195,7 @@
             retiradaLocal: document.getElementById('retiradaLocal').checked,
             valorTele: parseFloat(document.getElementById('valorTele').value || 0),
             valorMinimo: parseFloat(document.getElementById('valorMinimo').value || 0),
-			linkCarrinho: document.getElementById('linkCarrinho').value.trim() || ""
+			linkCarrinho: formatarLinkYoutube(document.getElementById('linkCarrinho').value.trim() || "")
         };
 
         showMsg("Salvando...", "#dbeafe");
@@ -217,6 +217,44 @@
         const m = document.getElementById('msgStatus');
         m.style.display = 'block'; m.textContent = txt; m.style.background = color;
     }
+	
+	
+	function formatarLinkYoutube(url) {
+    if (!url) return "";
+
+    let videoId = "";
+    let urlObj;
+
+    try {
+        urlObj = new URL(url);
+    } catch (e) {
+        return url; // Retorna o que o usuário digitou se não for uma URL válida
+    }
+
+    // 1. Extrai o ID do vídeo (funciona para links normais e de playlist)
+    if (url.includes("youtube.com/watch")) {
+        videoId = urlObj.searchParams.get("v");
+    } else if (url.includes("youtu.be/")) {
+        videoId = urlObj.pathname.substring(1);
+    } else if (url.includes("youtube.com/embed/")) {
+        // Já é um link de embed, mas vamos limpar possíveis erros de símbolos
+        videoId = urlObj.pathname.split("/").pop();
+    }
+
+    if (!videoId) return url;
+
+    // 2. Reconstrói a URL para o formato Embed
+    // Se você quiser manter a playlist, pegamos o parâmetro 'list'
+    const listId = urlObj.searchParams.get("list");
+    let novaUrl = `https://www.youtube.com/embed/${videoId}`;
+
+    if (listId) {
+        novaUrl += `?list=${listId}`;
+    }
+
+    return novaUrl;
+}
+	
 </script>
 </body>
 </html>
