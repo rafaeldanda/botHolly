@@ -59,10 +59,7 @@
 
     <script>
 	
-	
-	
-	
-	
+
 	
 		
 	let numero = 0;
@@ -188,6 +185,7 @@
                 Total: R$ ${p.totalPedido.toFixed(2)}
                 ${p.totalTele > 0 ? `<br><small style="font-weight:normal">Taxa Entrega: R$ ${p.totalTele.toFixed(2)}</small>` : ''}
                 ${p.cupom ? `<br><small style="font-weight:normal; color: #e74c3c;">Cupom Usado: ${p.cupom}</small>` : ''}
+				<br><small style="font-weight:normal; ">Pagamento: ${p.formaPagamento}</small>
             </div>
         </div>
         <div class="actions">
@@ -197,16 +195,6 @@
     `;
     return card;
 }
-
-
-
-
-
-
-
-
-
-
 
 
 	
@@ -264,7 +252,9 @@ function imprimir(btn) {
     ${i.obs ? `<small>  <em>Obs: ${i.obs}</em></small><br>` : ''}
 `).join('')}
                 <div class="divisa"></div>
-                <strong>TOTAL: R$ ${p.totalPedido.toFixed(2)}</strong>
+                <strong>TOTAL: R$ ${p.totalPedido.toFixed(2)}</strong></br>
+				<strong>TELE-ENTREGA: R$ ${p.totalTele.toFixed(2)}</strong></br>
+				<strong>PAGAMENTO: ${p.formaPagamento}</strong></br>
                 <div class="divisa"></div>
                 <center>Obrigado pela preferência!</center>
             </body>
@@ -293,7 +283,7 @@ function imprimir(btn) {
 			const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 				
 			for (let i = 0; i <= 5; i++) {
-				audio.play().catch(e => console.log("Interação necessária"));
+				//audio.play().catch(e => console.log("Interação necessária"));
 				
 				// Agora o código realmente espera 1000ms (1 segundo) antes de repetir
 				await delay(1000); 
