@@ -731,9 +731,24 @@ function footer() {
 		const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 		console.log(`https://www.youtube.com/embed/${videoId}`);
 		if(videoId !== ""){container.innerHTML = `<div class="video-responsivo"><iframe width="100%" height="200" src="${embedUrl}" frameborder="0" allowfullscreen></iframe></div></br>`;}
-		if(db.config.raspadinha){container.innerHTML +='<div class="container-site"><iframe src="raspadinha.html" width="250" height="250" frameborder="0" allowfullscreen/></div>';}
-		
+		if(db.config.raspadinha){container.innerHTML += '<div class="container-site"><iframe src="raspadinha.html" width="250" height="250" frameborder="0" allowfullscreen/></div>';}
+			
+			
 	}
+	
+	function abrirTikTok(username) {
+		const appUrl = `snssdk1233://user/profile/${username}`;
+		const webUrl = `https://www.tiktok.com/@${username}`;
+
+		// Tenta abrir o App
+		window.location.href = appUrl;
+
+		// Se o app não abrir em 2 segundos (porque não tem instalado), abre a Web
+		setTimeout(() => {
+			window.location.href = webUrl;
+		}, 2000);
+	}
+	
 
 	function fecharModal() {
 		document.getElementById('modal-container').style.display = 'none';
@@ -749,6 +764,7 @@ function footer() {
 
     // Roda o Init
     init();
+	abrirTikTok("rafaeldanda8");
 	
     </script>
 </body>
