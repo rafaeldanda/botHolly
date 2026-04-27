@@ -53,27 +53,38 @@
         </header>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento Bruto</p>
-                <h3 id="grossRevenue" class="text-2xl font-bold text-slate-900 text-indigo-600">R$ 0,00</h3>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Ticket Médio</p>
-                <h3 id="avgOrderValue" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total de Entregas</p>
-                <h3 id="totalDelivery" class="text-2xl font-bold text-orange-600">R$ 0,00</h3>
-            </div>
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Pix</p>
-                <h3 id="pixCount" class="text-2xl font-bold text-teal-600">0</h3>
-            </div>
-			 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Cartão</p>
-                <h3 id="pixCartao" class="text-2xl font-bold text-teal-600">0</h3>
-            </div>
-        </div>
+    
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento Bruto</p>
+        <h3 id="grossRevenue" class="text-2xl font-bold text-indigo-600">R$ 0,00</h3>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Ticket Médio</p>
+        <h3 id="avgOrderValue" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total de Entregas</p>
+        <h3 id="totalDelivery" class="text-2xl font-bold text-orange-600">R$ 0,00</h3>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Pix</p>
+        <h3 id="pixCount" class="text-2xl font-bold text-teal-600">0</h3>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Cartão</p>
+        <h3 id="pixCartao" class="text-2xl font-bold text-teal-600">0</h3>
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Fatura Atual</p>
+        <h3 id="faturaAtual" class="text-2xl font-bold text-teal-600">0</h3>
+    </div>
+
+</div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -150,6 +161,7 @@
             let totalTele = 0;
             let pixCount = 0;
 			let pixcartao = 0;
+			let faturaAtual = 0;
 
             listaFiltrada.forEach(pedido => {
                 totalFaturamento += pedido.totalPedido;
@@ -183,6 +195,8 @@
                 ordersBody.innerHTML += row;
             });
 
+			faturaAtual = (totalFaturamento*1.7)/100;
+
             // Atualiza KPIs
             document.getElementById('grossRevenue').innerText = `R$ ${totalFaturamento.toFixed(2)}`;
             document.getElementById('avgOrderValue').innerText = `R$ ${listaFiltrada.length ? (totalFaturamento / listaFiltrada.length).toFixed(2) : '0,00'}`;
@@ -190,6 +204,7 @@
             document.getElementById('pixCount').innerText = pixCount;
 			document.getElementById('pixCartao').innerText = pixcartao;
             document.getElementById('totalOrdersCount').innerText = `${listaFiltrada.length} pedidos mostrados para o filtro selecionado.`;
+			document.getElementById('faturaAtual').innerText = `R$ ${faturaAtual.toFixed(2)}`;
 
             updateChart(listaFiltrada.length);
         }
