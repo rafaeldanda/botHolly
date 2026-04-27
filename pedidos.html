@@ -22,6 +22,46 @@
     .btn-print { background: #55acee; color: white; width: 100%; margin-top: 8px; }
     .btn-next { background: #2ecc71; color: white; }
 
+	.modal-card {
+		border: none;
+		border-radius: 12px;
+		padding: 20px;
+		width: 320px;
+		box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+		font-family: sans-serif;
+	}
+
+	.modal-card::backdrop {
+		background: rgba(0, 0, 0, 0.5);
+	}
+
+	.modal-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: 1px solid #eee;
+		padding-bottom: 10px;
+		margin-bottom: 15px;
+	}
+
+	.modal-header h2 { margin: 0; font-size: 1.2rem; color: #333; }
+
+	.btn-close {
+		background: none;
+		border: none;
+		font-size: 1.5rem;
+		cursor: pointer;
+		color: #999;
+	}
+
+	.info-row {
+		display: flex;
+		justify-content: space-between;
+		margin-bottom: 10px;
+		font-size: 1rem;
+	}
+
+	.info-row strong { color: #2ecc71; }
     
    
 
@@ -33,7 +73,8 @@
 
     <header>
         <h1 id="loja-nome">Carregando...</h1></br>
-		<h3 id="loja-url">Carregando...</h3>
+		<h3 id="loja-url">Carregando...</h3></br>
+		<small id="loja-ralatorio">Sincronizando com servidor...</small>
         <small id="loja-info">Sincronizando com servidor...</small>
     </header>
 
@@ -57,13 +98,37 @@
         </div>
     </main>
 
+<dialog id="vendasModal" class="modal-card">
+    <div class="modal-header">
+        <h2>Resumo de Vendas</h2>
+        <button onclick="fecharCard()" class="btn-close">&times;</button>
+    </div>
+    <div class="modal-body">
+        <div class="info-row">
+            <span>Total Vendido:</span>
+            <strong id="valTotal">R$ 0,00</strong>
+        </div>
+        <div class="info-row">
+            <span>Vendas Cartão:</span>
+            <strong id="valCartao">R$ 0,00</strong>
+        </div>
+        <div class="info-row">
+            <span>Vendas Pix:</span>
+            <strong id="valPix">R$ 0,00</strong>
+        </div>
+    </div>
+</dialog>
+
+
     <script>
 	
 
 	
 		
 	let numero = 0;
-	
+	let totalVendido = 0;
+	let totalPix = 0;
+	let totalCartao = 0;
 	
         const API_URL = 'https://primary-production-fad5.up.railway.app/webhook/dd15b276-b4f1-4bd8-8fb8-e40a9f037700';
         
@@ -133,11 +198,17 @@
 			const url = `https://rafaeldanda.github.io/botHolly/holly%20-%20Copia.html?l=${loja.lojaId}`;
             document.getElementById('loja-nome').innerText = loja.nome;
 			document.getElementById('loja-url').innerHTML = `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">Acessar Loja</a>`;
-            document.getElementById('loja-info').innerText = `MEI: ${loja.cnpj} | Porto Alegre, RS | Refesh: ${new Date().toLocaleTimeString('pt-BR')}`;
+            document.getElementById('loja-ralatorio').innerHTML = '<a href="#" onclick="event.preventDefault(); abrirCardVendas(window.totalvendido, window.totalCartao, window.totalPix)" style="color: white; text-decoration: underline;">Relatorio do dia</a></br>';
+			document.getElementById('loja-info').innerText = `MEI: ${loja.cnpj} | Porto Alegre, RS | Refesh: ${new Date().toLocaleTimeString('pt-BR')}`;
 
             // Limpa as colunas
             document.querySelectorAll('.items-container').forEach(c => c.innerHTML = '');
-
+			
+			
+			totalVendido = 0;
+			totalPix = 0;
+			totalCartao = 0;
+			
             // Renderiza cada pedido
             pedidos.forEach(p => {
                 const status = p.status || 'solicitada';
@@ -145,7 +216,25 @@
                 if (container) {
                     container.appendChild(criarCard(p));
                 }
+						
+				
+				totalVendido += p.totalPedido;
+				if(p.formaPagamento === "pix"){
+					totalPix += p.totalPedido;
+				} else {
+					totalCartao += p.totalPedido;
+				}
+				
+				
+				
             });
+			window.totalvendido = totalVendido;
+			window.totalPix = totalPix;
+			window.totalCartao = totalCartao;
+			
+			console.log("total: "+totalVendido);
+			console.log("pix: "+totalPix);
+			console.log("cartao: "+totalCartao);
         }
 
       function criarCard(p) {
@@ -295,7 +384,30 @@ function imprimir(btn) {
 		}
 
 
-	
+	function abrirCardVendas(total, cartao, pix) {
+    const modal = document.getElementById('vendasModal');
+    
+    // Formatador de moeda brasileira
+    const formatter = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+
+    // Inserindo os valores nos elementos
+    document.getElementById('valTotal').innerText = formatter.format(total);
+    document.getElementById('valCartao').innerText = formatter.format(cartao);
+    document.getElementById('valPix').innerText = formatter.format(pix);
+
+    // Abre o modal de forma nativa
+    modal.showModal();
+	}
+
+	function fecharCard() {
+		document.getElementById('vendasModal').close();
+	}
+
+	// Exemplo de uso:
+	// abrirCardVendas(1500.50, 900.00, 600.50);
 	
 		
 	
