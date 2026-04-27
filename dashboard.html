@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Country Xis - Gestão de Pedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    </style>
+</head>
+<body class="p-4 md:p-6">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Country Xis <span class="font-normal text-slate-400">| Painel de Pedidos</span></h1>
+                <p id="totalOrdersCount" class="text-slate-500 text-sm">Conectando ao banco de dados...</p>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase">Mês:</label>
+                    <select id="monthFilter" onchange="processData()" class="bg-white border border-slate-200 text-slate-700 text-xs rounded-lg p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="all">Todos os Meses</option>
+                        <option value="01">Janeiro</option>
+                        <option value="02">Fevereiro</option>
+                        <option value="03">Março</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Maio</option>
+                        <option value="06">Junho</option>
+                        <option value="07">Julho</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+
+                <div class="bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
+                    <span id="systemStatus" class="text-green-500 flex items-center gap-2 text-sm font-semibold">
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        Monitorando Pedidos
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento Bruto</p>
+                <h3 id="grossRevenue" class="text-2xl font-bold text-slate-900 text-indigo-600">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Ticket Médio</p>
+                <h3 id="avgOrderValue" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total de Entregas</p>
+                <h3 id="totalDelivery" class="text-2xl font-bold text-orange-600">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Pix</p>
+                <h3 id="pixCount" class="text-2xl font-bold text-teal-600">0</h3>
+            </div>
+			 <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Cartão</p>
+                <h3 id="pixCartao" class="text-2xl font-bold text-teal-600">0</h3>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-4 border-b border-slate-100">
+                    <h3 class="font-bold text-slate-700 uppercase text-sm tracking-wider">Fila de Pedidos</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Data</th>
+                                <th class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Cliente</th>
+                                <th class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase">Pedido</th>
+                                <th class="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersList" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-700 uppercase text-sm tracking-wider mb-4 text-center">Proporção Mensal</h3>
+                <div class="relative h-64">
+                    <canvas id="ordersChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allPedidos = [];
+        let chartInstance = null;
+
+        // 1. Pega o parâmetro ?l= da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const lojaIdParam = urlParams.get('l') || "";
+
+        async function fetchData() {
+            const webhookUrl = 'https://primary-production-fad5.up.railway.app/webhook/dd15b276-b4f1-4bd8-8fb8-e40a9f037700';
+            
+            try {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        "action": "dashboard",
+                        "lojaId": lojaIdParam
+                    })
+                });
+                
+                const data = await response.json();
+                allPedidos = Array.isArray(data) ? data : [data];
+                processData();
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                document.getElementById('totalOrdersCount').innerText = "Erro ao carregar dados do servidor.";
+            }
+        }
+
+        function processData() {
+            const selectedMonth = document.getElementById('monthFilter').value;
+            const ordersBody = document.getElementById('ordersList');
+            ordersBody.innerHTML = '';
+
+            // Filtragem por mês baseada na dataCriacao
+            const listaFiltrada = allPedidos.filter(p => {
+                if (selectedMonth === 'all') return true;
+                const mesPedido = new Date(p.dataCriacao).getUTCMonth() + 1;
+                return mesPedido === parseInt(selectedMonth);
+            });
+
+            let totalFaturamento = 0;
+            let totalTele = 0;
+            let pixCount = 0;
+			let pixcartao = 0;
+
+            listaFiltrada.forEach(pedido => {
+                totalFaturamento += pedido.totalPedido;
+                totalTele += pedido.totalTele;
+                if(pedido.formaPagamento.toLowerCase() === 'pix') pixCount++;
+				if(pedido.formaPagamento.toLowerCase() === 'cartao') pixcartao++;
+
+                const itensStr = pedido.itens.map(i => i.nome).join(', ');
+                const entregaBadge = pedido.totalTele > 0 
+                    ? `<span class="block text-[10px] text-orange-500 font-semibold uppercase">Entrega</span>`
+                    : `<span class="block text-[10px] text-green-500 font-semibold uppercase">Retirada</span>`;
+                
+                const dataFormatada = new Date(pedido.dataCriacao).toLocaleDateString('pt-BR');
+
+                const row = `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 text-[10px] text-slate-400 font-medium">${dataFormatada}</td>
+                        <td class="px-4 py-3">
+                            <span class="font-semibold text-slate-700 block text-sm">${pedido.cliente.nome}</span>
+                            <span class="text-[10px] text-slate-400">${pedido.cliente.endereco}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="text-xs text-slate-600">${itensStr}</span>
+                            ${entregaBadge}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <span class="font-bold text-slate-800 text-sm">R$ ${pedido.totalPedido.toFixed(2)}</span>
+                        </td>
+                    </tr>
+                `;
+                ordersBody.innerHTML += row;
+            });
+
+            // Atualiza KPIs
+            document.getElementById('grossRevenue').innerText = `R$ ${totalFaturamento.toFixed(2)}`;
+            document.getElementById('avgOrderValue').innerText = `R$ ${listaFiltrada.length ? (totalFaturamento / listaFiltrada.length).toFixed(2) : '0,00'}`;
+            document.getElementById('totalDelivery').innerText = `R$ ${totalTele.toFixed(2)}`;
+            document.getElementById('pixCount').innerText = pixCount;
+			document.getElementById('pixCartao').innerText = pixcartao;
+            document.getElementById('totalOrdersCount').innerText = `${listaFiltrada.length} pedidos mostrados para o filtro selecionado.`;
+
+            updateChart(listaFiltrada.length);
+        }
+
+        function updateChart(count) {
+            const ctx = document.getElementById('ordersChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Pedidos no Período'],
+                    datasets: [{
+                        data: [count],
+                        backgroundColor: ['#6366f1'],
+                        borderWidth: 5,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    cutout: '75%'
+                }
+            });
+        }
+
+        // Inicializa buscando dados do Railway
+        fetchData();
+    </script>
+</body>
+</html>
