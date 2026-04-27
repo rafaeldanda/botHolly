@@ -9,6 +9,20 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        dialog::backdrop {
+            background-color: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(4px);
+        }
+        
+        #pixModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin: 0;
+            border: none;
+        }
     </style>
 </head>
 <body class="p-4 md:p-6">
@@ -52,39 +66,33 @@
             </div>
         </header>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-    
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento Bruto</p>
-        <h3 id="grossRevenue" class="text-2xl font-bold text-indigo-600">R$ 0,00</h3>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Ticket Médio</p>
-        <h3 id="avgOrderValue" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total de Entregas</p>
-        <h3 id="totalDelivery" class="text-2xl font-bold text-orange-600">R$ 0,00</h3>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Pix</p>
-        <h3 id="pixCount" class="text-2xl font-bold text-teal-600">0</h3>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Cartão</p>
-        <h3 id="pixCartao" class="text-2xl font-bold text-teal-600">0</h3>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-        <p class="text-xs font-bold text-slate-400 uppercase mb-1">Fatura Atual</p>
-        <h3 id="faturaAtual" class="text-2xl font-bold text-teal-600">0</h3>
-    </div>
-
-</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Faturamento Bruto</p>
+                <h3 id="grossRevenue" class="text-2xl font-bold text-indigo-600">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Ticket Médio</p>
+                <h3 id="avgOrderValue" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Total de Entregas</p>
+                <h3 id="totalDelivery" class="text-2xl font-bold text-orange-600">R$ 0,00</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Pix</p>
+                <h3 id="pixCount" class="text-2xl font-bold text-teal-600">0</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Pagamentos via Cartão</p>
+                <h3 id="pixCartao" class="text-2xl font-bold text-teal-600">0</h3>
+            </div>
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-teal-500 transition-all" 
+                 onclick="abrirFaturaPix('rafaeldanda@gmail.com', window.faturaAtual)">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-1">Fatura Atual (Pagar)</p>
+                <h3 id="faturaAtual" class="text-2xl font-bold text-teal-600">R$ 0,00</h3>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -115,33 +123,49 @@
         </div>
     </div>
 
+    <dialog id="pixModal" class="rounded-2xl shadow-2xl p-0">
+        <div class="bg-white w-[350px] overflow-hidden">
+            <div class="bg-teal-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold uppercase text-xs tracking-widest">Pagamento Pix</h3>
+                <button onclick="fecharPix()" class="text-white text-xl">&times;</button>
+            </div>
+            <div class="p-6 flex flex-col items-center text-center">
+                <p class="text-slate-400 text-[10px] font-bold uppercase mb-1">Valor a pagar</p>
+                <h2 id="pixValorDisplay" class="text-3xl font-bold text-slate-800 mb-6">R$ 0,00</h2>
+                
+                <div class="bg-white w-48 h-48 rounded-lg mb-6 flex items-center justify-center border border-slate-200 overflow-hidden">
+                    <img id="pixQRCode" src="" alt="QR Code Pix" class="w-full h-full object-contain">
+                </div>
+
+                <div class="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 flex items-center justify-between">
+                    <span id="pixChaveDisplay" class="text-[10px] text-slate-600 truncate mr-2 font-mono italic"></span>
+                    <button onclick="copiarPix()" class="text-teal-600 p-1 hover:bg-teal-50 rounded">Copiar</button>
+                </div>
+                <button onclick="fecharPix()" class="text-slate-400 text-[10px] font-bold uppercase">Fechar</button>
+            </div>
+        </div>
+    </dialog>
+
     <script>
         let allPedidos = [];
         let chartInstance = null;
 
-        // 1. Pega o parâmetro ?l= da URL
         const urlParams = new URLSearchParams(window.location.search);
         const lojaIdParam = urlParams.get('l') || "";
 
         async function fetchData() {
             const webhookUrl = 'https://primary-production-fad5.up.railway.app/webhook/dd15b276-b4f1-4bd8-8fb8-e40a9f037700';
-            
             try {
                 const response = await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        "action": "dashboard",
-                        "lojaId": lojaIdParam
-                    })
+                    body: JSON.stringify({ "action": "dashboard", "lojaId": lojaIdParam })
                 });
-                
                 const data = await response.json();
                 allPedidos = Array.isArray(data) ? data : [data];
                 processData();
             } catch (error) {
-                console.error('Erro ao buscar dados:', error);
-                document.getElementById('totalOrdersCount').innerText = "Erro ao carregar dados do servidor.";
+                console.error('Erro:', error);
             }
         }
 
@@ -150,7 +174,6 @@
             const ordersBody = document.getElementById('ordersList');
             ordersBody.innerHTML = '';
 
-            // Filtragem por mês baseada na dataCriacao
             const listaFiltrada = allPedidos.filter(p => {
                 if (selectedMonth === 'all') return true;
                 const mesPedido = new Date(p.dataCriacao).getUTCMonth() + 1;
@@ -160,28 +183,26 @@
             let totalFaturamento = 0;
             let totalTele = 0;
             let pixCount = 0;
-			let pixcartao = 0;
-			let faturaAtual = 0;
+            let pixCartao = 0;
 
             listaFiltrada.forEach(pedido => {
                 totalFaturamento += pedido.totalPedido;
                 totalTele += pedido.totalTele;
-                if(pedido.formaPagamento.toLowerCase() === 'pix') pixCount++;
-				if(pedido.formaPagamento.toLowerCase() === 'cartao') pixcartao++;
+                
+                const forma = pedido.formaPagamento.toLowerCase();
+                if(forma === 'pix') pixCount++;
+                if(forma === 'cartao' || forma === 'cartão') pixCartao++;
 
                 const itensStr = pedido.itens.map(i => i.nome).join(', ');
-                const entregaBadge = pedido.totalTele > 0 
+                const entregaBadge = pedido.totalTele > 0 
                     ? `<span class="block text-[10px] text-orange-500 font-semibold uppercase">Entrega</span>`
                     : `<span class="block text-[10px] text-green-500 font-semibold uppercase">Retirada</span>`;
                 
-                const dataFormatada = new Date(pedido.dataCriacao).toLocaleDateString('pt-BR');
-
                 const row = `
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-4 py-3 text-[10px] text-slate-400 font-medium">${dataFormatada}</td>
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 text-[10px] text-slate-400">${new Date(pedido.dataCriacao).toLocaleDateString('pt-BR')}</td>
                         <td class="px-4 py-3">
                             <span class="font-semibold text-slate-700 block text-sm">${pedido.cliente.nome}</span>
-                            <span class="text-[10px] text-slate-400">${pedido.cliente.endereco}</span>
                         </td>
                         <td class="px-4 py-3">
                             <span class="text-xs text-slate-600">${itensStr}</span>
@@ -195,45 +216,122 @@
                 ordersBody.innerHTML += row;
             });
 
-			faturaAtual = (totalFaturamento*1.7)/100;
+           // Lógica da Fatura
+            const faturaCalculada = (totalFaturamento * 1.7) / 100;
+            window.faturaAtual = faturaCalculada;
 
-            // Atualiza KPIs
+            // Atribui os valores básicos aos KPIs
             document.getElementById('grossRevenue').innerText = `R$ ${totalFaturamento.toFixed(2)}`;
             document.getElementById('avgOrderValue').innerText = `R$ ${listaFiltrada.length ? (totalFaturamento / listaFiltrada.length).toFixed(2) : '0,00'}`;
             document.getElementById('totalDelivery').innerText = `R$ ${totalTele.toFixed(2)}`;
             document.getElementById('pixCount').innerText = pixCount;
-			document.getElementById('pixCartao').innerText = pixcartao;
-            document.getElementById('totalOrdersCount').innerText = `${listaFiltrada.length} pedidos mostrados para o filtro selecionado.`;
-			document.getElementById('faturaAtual').innerText = `R$ ${faturaAtual.toFixed(2)}`;
+            document.getElementById('pixCartao').innerText = pixCartao;
+            document.getElementById('faturaAtual').innerText = `R$ ${faturaCalculada.toFixed(2)}`;
+            document.getElementById('totalOrdersCount').innerText = `${listaFiltrada.length} pedidos encontrados.`;
+
+            // --- NOVA TRAVA DE DATA (01 A 10) ---
+            const hoje = new Date();
+            const diaAtual = hoje.getDate(); 
+			// Pega o dia atual formatado especificamente no fuso horário de Brasília
+			/*const diaAtual = parseInt(new Intl.DateTimeFormat('pt-BR', {
+				day: '2-digit',
+				timeZone: 'America/Sao_Paulo'
+			}).format(new Date()));*/
+            const cardFatura = document.getElementById('faturaAtual').parentElement;
+            const labelFatura = cardFatura.querySelector('p');
+
+            if (diaAtual >= 1 && diaAtual <= 10) {
+                // Período Liberado
+                cardFatura.classList.remove('opacity-50', 'cursor-not-allowed', 'grayscale');
+                cardFatura.classList.add('cursor-pointer', 'hover:border-teal-500');
+                cardFatura.onclick = () => abrirFaturaPix('Porttoexpress@gmail.com', window.faturaAtual);
+                labelFatura.innerText = "Fatura Atual (Clique para Pagar)";
+            } else {
+                // Período Bloqueado (Hoje é dia 27, cairá aqui)
+                cardFatura.classList.add('opacity-50', 'cursor-not-allowed', 'grayscale');
+                cardFatura.classList.remove('cursor-pointer', 'hover:border-teal-500');
+                cardFatura.onclick = null; 
+                labelFatura.innerText = "Pagamento disponível apenas entre dias 01 e 10";
+            }
+            // ------------------------------------
 
             updateChart(listaFiltrada.length);
+        }
+
+       function abrirFaturaPix(chave, valor) {
+		const modal = document.getElementById('pixModal');
+		
+		// Função para gerar o código padrão Banco Central (BRCode)
+		function gerarPayloadPix(chave, valor, beneficiario, cidade) {
+			const formatarCampo = (id, valor) => id + String(valor.length).padStart(2, '0') + valor;
+			
+			// Remove espaços do nome e limita tamanho (padrão EMV)
+			const nomeLimpo = beneficiario.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().substring(0, 25);
+			const cidadeLimpa = cidade.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().substring(0, 15);
+			const valorTxt = valor.toFixed(2);
+
+			const payload = [
+				formatarCampo('00', '01'), 
+				formatarCampo('26', formatarCampo('00', 'br.gov.bcb.pix') + formatarCampo('01', chave)),
+				formatarCampo('52', '0000'), 
+				formatarCampo('53', '986'), 
+				formatarCampo('54', valorTxt), 
+				formatarCampo('58', 'BR'), 
+				formatarCampo('59', nomeLimpo), 
+				formatarCampo('60', cidadeLimpa), 
+				formatarCampo('62', formatarCampo('05', 'FATURA')), 
+				'6304' 
+			].join('');
+
+			// Cálculo do CRC16
+			let crc = 0xFFFF;
+			for (let i = 0; i < payload.length; i++) {
+				crc ^= payload.charCodeAt(i) << 8;
+				for (let j = 0; j < 8; j++) {
+					if ((crc & 0x8000) !== 0) crc = (crc << 1) ^ 0x1021;
+					else crc <<= 1;
+				}
+			}
+			return payload + (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
+			}
+
+			// DADOS DO SEU COMPROVANTE:
+			const minhaChave = "rafaeldanda@gmail.com"; 
+			const nomeRecebedor = "Rafael Danda Nolasco Rodrigues"; // Nome que aparece no destino do seu comprovante
+			const cidade = "PORTO ALEGRE";
+
+			const brCode = gerarPayloadPix(minhaChave, valor, nomeRecebedor, cidade);
+
+			// Atualiza o Modal
+			document.getElementById('pixValorDisplay').innerText = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+			document.getElementById('pixChaveDisplay').innerText = brCode; 
+			
+			// QR Code com alta correção de erro para facilitar a leitura no monitor
+			document.getElementById('pixQRCode').src = `https://quickchart.io/qr?text=${encodeURIComponent(brCode)}&size=300&margin=3&ecLevel=Q`;
+
+			modal.showModal();
+		}
+
+        function fecharPix() { document.getElementById('pixModal').close(); }
+
+        function copiarPix() {
+            const texto = document.getElementById('pixChaveDisplay').innerText;
+            navigator.clipboard.writeText(texto).then(() => alert("Copiado!"));
         }
 
         function updateChart(count) {
             const ctx = document.getElementById('ordersChart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
-
             chartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Pedidos no Período'],
-                    datasets: [{
-                        data: [count],
-                        backgroundColor: ['#6366f1'],
-                        borderWidth: 5,
-                        borderColor: '#ffffff'
-                    }]
+                    labels: ['Pedidos'],
+                    datasets: [{ data: [count], backgroundColor: ['#6366f1'], borderWidth: 5 }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } },
-                    cutout: '75%'
-                }
+                options: { maintainAspectRatio: false, cutout: '75%' }
             });
         }
 
-        // Inicializa buscando dados do Railway
         fetchData();
     </script>
 </body>
