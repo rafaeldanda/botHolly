@@ -537,29 +537,59 @@
     `).join('');*/
 	
 	
+	
+	
 	itemsCont.innerHTML = carrinho.map((item, idx) => {
-    // Calculamos o preço base sem promoção para mostrar o "de R$ ..."
-    // Se o item tem promoção, o preço "cheio" seria o valorFinal + o desconto
-	valorDesconto = item.valorFinal - (item.valorFinal * parseFloat(item.desconto)/100);
-    const precoSemDesconto = item.valorFinal;
+    // 1. Pegamos o preço base do produto e os adicionais separadamente
+    const precoBase = parseFloat(item.preco || 0);
+    const adicionais = item.adicionaisSelecionados?.reduce((sum, a) => sum + parseFloat(a.preco || 0), 0) || 0;
+    
+    let valorExibido = 0;
+    let htmlPreco = '';
 
+    // 2. Verifica se tem promoção ativa e desconto válido
+    if (item.promocao && parseFloat(item.desconto) > 0) {
+        const fatorDesconto = 1 - (parseFloat(item.desconto) / 100);
+        const precoComDesconto = precoBase * fatorDesconto;
+        
+        // Valor Final = (Produto com desconto) + Adicionais (valor cheio)
+        valorExibido = precoComDesconto + adicionais;
+        
+        // Preço cheio para o "riscado" = Produto Base + Adicionais
+        const precoCheio = precoBase + adicionais;
+
+        htmlPreco = `
+            <p class="font-black text-base text-gray-900">R$ ${valorExibido.toFixed(2)}</p>
+            <span class="text-[10px] text-gray-400 line-through font-normal">R$ ${precoCheio.toFixed(2)}</span>
+        `;
+    } else {
+        // Se não tem promoção, valor cheio normal
+        valorExibido = precoBase + adicionais;
+        htmlPreco = `
+            <p class="font-black text-base text-gray-900">R$ ${valorExibido.toFixed(2)}</p>
+        `;
+    }
+    
     return `
         <div class="bg-gray-50 p-4 rounded-2xl relative border mb-3">
             <button onclick="removerItem(${idx})" class="absolute top-4 right-4 text-red-500 font-bold text-[10px] uppercase">Remover</button>
             
-            <p class="font-bold text-xs uppercase">${item.nome}</p>
+            <p class="font-bold text-xs uppercase text-gray-800">${item.nome}</p>
             
-            ${item.adicionaisSelecionados?.map(a => `<span class="block text-[10px] text-gray-400 font-black uppercase">${a.nome}</span>`).join('') || ''}
+            <div class="mt-1">
+                ${item.adicionaisSelecionados?.map(a => `<span class="block text-[10px] text-gray-400 font-black uppercase">${a.nome}</span>`).join('') || ''}
+            </div>
             
-            ${item.obsCliente ? `<p class="text-[10px] text-red-600 font-bold italic mt-1">"${item.obsCliente}"</p>` : ''}
+            ${item.obsCliente ? `<p class="text-[10px] text-red-600 font-bold italic mt-2 bg-red-50 p-1 px-2 rounded-lg">"${item.obsCliente}"</p>` : ''}
             
             <div class="flex items-center gap-2 mt-2">
-                <p class="font-black text-base">R$ ${valorDesconto.toFixed(2)}</p>
-                ${precoSemDesconto ? `<span class="text-[10px] text-gray-400 line-through">R$ ${item.valorFinal.toFixed(2)}</span>` : ''}
+                ${htmlPreco}
             </div>
         </div>
     `;
-	}).join('');
+}).join('');
+	
+	
 	
 	
 
