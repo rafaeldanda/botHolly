@@ -89,6 +89,16 @@
         </div>
 
         <div class="config-group">
+			<div class="config-item">
+                <div class="config-info">
+                    <span class="config-title">Online</span>
+                    <span class="config-desc">Defina se esta ou não disponivel para vendas.</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="online">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <div class="config-item">
                 <div class="config-info">
                     <span class="config-title">Pagamento via Pix</span>
@@ -175,7 +185,8 @@
             if (data) {
                 // Popula os Checkboxes (Toggles)
                 // Usamos !! para garantir que o valor seja tratado como booleano
-                document.getElementById('pix').checked = !!data.pix;
+                document.getElementById('online').checked = !!data.online;
+				document.getElementById('pix').checked = !!data.pix;
                 document.getElementById('cartao').checked = !!data.cartao;
                 document.getElementById('retiradaLocal').checked = !!data.retiradaLocal;
 				document.getElementById('raspadinha').checked = !!data.raspadinha;
@@ -202,7 +213,8 @@
         const payload = {
             action: "create",
             lojaId: idLoja,
-            pix: document.getElementById('pix').checked,
+            online: document.getElementById('online').checked,
+			pix: document.getElementById('pix').checked,
             cartao: document.getElementById('cartao').checked,
             retiradaLocal: document.getElementById('retiradaLocal').checked,
 			raspadinha: document.getElementById('raspadinha').checked,
