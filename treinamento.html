@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treinamento de Parceiros | Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .course-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white border-b sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="bg-orange-500 p-2 rounded-lg text-white">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800 tracking-tight">PARCEIROS <span class="text-orange-500">PRO</span></h1>
+            </div>
+            <nav class="hidden md:flex gap-6 text-gray-600 font-medium">
+                <a href="#" class="hover:text-orange-500 transition">Início</a>
+                <a href="#" class="hover:text-orange-500 transition">Meus Cursos</a>
+                <a href="#" class="hover:text-orange-500 transition">Suporte</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-gray-900 to-gray-800 py-12 text-white">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Central de Treinamento</h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Acesse os melhores conteúdos da Hotmart e acelere seus resultados como parceiro oficial.</p>
+        </div>
+    </section>
+
+    <!-- Filtros e Busca -->
+    <div class="container mx-auto px-4 -mt-8">
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row gap-4 items-center">
+            <div class="relative w-full md:flex-1">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" placeholder="Buscar treinamento..." class="w-full pl-12 pr-4 py-3 bg-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-orange-500 transition">
+            </div>
+            <select class="w-full md:w-48 py-3 px-4 bg-gray-100 rounded-lg outline-none cursor-pointer">
+                <option value="">Todas Categorias</option>
+                <option value="vendas">Vendas</option>
+                <option value="marketing">Marketing</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Lista de Cursos -->
+    <main class="container mx-auto px-4 py-12">
+        <div id="grid-cursos" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <!-- Shimmer Loading (Esqueleto de carregamento) -->
+            <div class="course-card bg-white rounded-2xl overflow-hidden border">
+                <div class="w-full h-48 shimmer"></div>
+                <div class="p-5 space-y-3">
+                    <div class="h-4 w-2/3 shimmer rounded"></div>
+                    <div class="h-6 w-full shimmer rounded"></div>
+                    <div class="h-10 w-full shimmer rounded"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+
+<script>
+    const API_URL = "https://primary-production-fad5.up.railway.app/webhook/f6df9acb-c754-47f7-91d9-2d5ee7e8b96a";
+    let cursosOriginais = []; // Variável para guardar a lista completa
+
+    async function carregarCursos() {
+        const grid = document.getElementById('grid-cursos');
+        try {
+            const response = await fetch(`${API_URL}?action=read`);
+            const data = await response.json();
+            // Salva os dados na variável global para podermos filtrar depois
+            cursosOriginais = Array.isArray(data) ? data : [data];
+            renderizarCursos(cursosOriginais);
+        } catch (error) {
+            console.error("Erro:", error);
+            grid.innerHTML = `<p class="col-span-full text-center text-red-500 py-10">Erro de conexão.</p>`;
+        }
+    }
+
+    function renderizarCursos(lista) {
+        const grid = document.getElementById('grid-cursos');
+        grid.innerHTML = "";
+
+        lista.forEach(curso => {
+            const nomeExibicao = curso.nome || "Treinamento Hotmart";
+            const categoriaExibicao = curso.categoria || "PARCEIRO";
+
+            const card = `
+                <div class="course-card w-full max-w-[300px] mx-auto bg-white rounded-[2.5rem] overflow-hidden border border-gray-100 shadow-sm flex flex-col p-3">
+                    <div class="relative aspect-square overflow-hidden rounded-[2rem] bg-gray-100">
+                        <img 
+                            src="${curso.imagem}" 
+                            alt="${nomeExibicao}" 
+                            onerror="this.src='https://via.placeholder.com/400x400?text=Sem+Imagem'"
+                            class="w-full h-full object-cover"
+                        >
+                        <div class="absolute top-4 left-4 bg-[#f97316] text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow-sm tracking-wider">
+                            ${categoriaExibicao.toUpperCase()}
+                        </div>
+                    </div>
+                    <div class="p-5 flex flex-col flex-grow text-center">
+                        <h3 class="text-lg font-bold text-[#1e293b] mb-6 line-clamp-2 leading-tight min-h-[3rem]">
+                            ${nomeExibicao}
+                        </h3>
+                        <div class="mt-auto">
+                            <a href="${curso.url}" target="_blank" class="block w-full bg-[#0f172a] hover:bg-[#1e293b] text-white text-center py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 text-base">
+                                Iniciar Treinamento
+                                <i class="fas fa-play-circle text-xl"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            grid.innerHTML += card;
+        });
+    }
+
+    // --- LÓGICA DE FILTRO ---
+    // Certifique-se que seu <input> de busca tenha o id="search-input"
+    document.addEventListener('input', (e) => {
+        if (e.target.id === 'search-input' || e.target.placeholder.includes('Buscar')) {
+            const termoBusca = e.target.value.toLowerCase();
+            
+            // Filtra a lista original comparando com o nome do curso
+            const cursosFiltrados = cursosOriginais.filter(curso => {
+                const nome = (curso.nome || "").toLowerCase();
+                return nome.includes(termoBusca);
+            });
+
+            renderizarCursos(cursosFiltrados);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', carregarCursos);
+</script>
+
+
+
+</body>
+</html>
