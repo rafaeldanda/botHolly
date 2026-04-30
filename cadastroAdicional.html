@@ -159,7 +159,7 @@
         listaAdicionaisLocal = Array.isArray(res) ? res : (res && (res._id || res.id) ? [res] : []);
 
         listaAdicionaisLocal.forEach(item => {
-            const idControle = item._id.$oid || item._id || item.id; 
+            const idControle = item.adicionalId || item.id;
             const row = `<tr>
                 <td><strong>${item.nome}</strong><br><small style="color:#888">${item.descricao || ''}</small></td>
                 <td>R$ ${parseFloat(item.preco).toFixed(2)}</td>
@@ -174,7 +174,7 @@
     }
 
     window.editMode = (id) => {
-        const item = listaAdicionaisLocal.find(i => (i._id.$oid || i._id || i.id) === id);
+        const item = listaAdicionaisLocal.find(i => (i.adicionalId || i.id) === id);
         if (item) {
             document.getElementById('internalId').value = id;
             document.getElementById('lojaId').value = item.lojaId || lojistaUrlParam;
@@ -188,7 +188,8 @@
     };
 
     window.deleteCat = async (id) => {
-        const item = listaAdicionaisLocal.find(i => (i._id.$oid || i._id || i.id) === id);
+        // Substitua a linha do find por esta:
+		const item = listaAdicionaisLocal.find(i => (i.adicionalId || i.id) === id);
         if (item && confirm(`Excluir adicional "${item.nome}"?`)) {
             await apiCall('delete', { 
                 lojaId: item.lojaId,
