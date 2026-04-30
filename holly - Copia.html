@@ -622,6 +622,7 @@
                 endereco: entregaAtiva ? `${document.getElementById('cli-end').value}, ${document.getElementById('cli-num').value}, ${document.getElementById('cli-comp').value}` : "RETIRADA" 
             },
             totalPedido: (subtotal + taxa) - descCupom,
+			status:'solicitada',
             formaPagamento: document.getElementById('forma-pagamento').value
         };
 
