@@ -372,7 +372,7 @@ function imprimir(btn) {
 			const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 				
 			for (let i = 0; i <= 5; i++) {
-				//audio.play().catch(e => console.log("Interação necessária"));
+				audio.play().catch(e => console.log("Interação necessária"));
 				
 				// Agora o código realmente espera 1000ms (1 segundo) antes de repetir
 				await delay(1000); 
