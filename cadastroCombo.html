@@ -72,6 +72,9 @@
 
         <div class="section-header">Selecione os Itens/Adicionais Inclusos</div>
         <div id="adicionaisContainer" class="adicionais-grid"></div>
+		<div class="section-header">Selecione a Imagem Desejada</br>
+			<input type="file" id="fotoInput" accept="image/jpeg, image/png, image/webp, image/avif">
+		</div>
 
         <button type="submit" class="btn-main" id="btnSubmit">SALVAR COMBO</button>
         <button type="button" class="btn-main" id="btnCancel" style="display:none; background: #64748b; margin-top: 5px;" onclick="resetForm()">CANCELAR EDIÇÃO</button>
@@ -155,46 +158,60 @@
         } catch (e) { tbody.innerHTML = "<tr><td colspan='4'>Nenhum combo cadastrado.</td></tr>"; }
     }
 
-    document.getElementById('comboForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const action = document.getElementById('actionField').value;
-        
-        const selecionados = Array.from(document.querySelectorAll('input[name="chkAdd"]:checked'))
-            .map(cb => {
-                const item = dbAdicionais.find(i => i.adicionalId === cb.value);
-                return { 
-                    nome: item.nome, 
-                    preco: item.preco, 
-                    descricao: item.descricao, 
-                    adicionalId: item.adicionalId 
-                };
-            });
+   document.getElementById('comboForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const action = document.getElementById('actionField').value;
+    const fotoInput = document.getElementById('fotoInput'); // Pegando a referência correta do input
+    
+    const selecionados = Array.from(document.querySelectorAll('input[name="chkAdd"]:checked'))
+        .map(cb => {
+            const item = dbAdicionais.find(i => i.adicionalId === cb.value);
+            return { 
+                nome: item.nome, 
+                preco: item.preco, 
+                descricao: item.descricao, 
+                adicionalId: item.adicionalId 
+            };
+        });
 
-        const payload = {
-            action: action,
-            lojaId: idLoja,
-            nome: document.getElementById('nome').value,
-            descricao: document.getElementById('descricao').value,
-            preco: parseFloat(document.getElementById('preco').value),
-            ativo: document.getElementById('ativo').checked,
-            dataCriacao: new Date().toISOString(),
-            adicionais: selecionados
-        };
+    const formData = new FormData();
 
-        if(action === "update") payload.comboId = document.getElementById('comboIdField').value;
+    // 1. Adiciona a imagem (se houver)
+    if (fotoInput.files.length > 0) {
+        formData.append('data', fotoInput.files[0]); 
+    }
 
-        showMsg("Salvando...");
-        try {
-            await fetch(WEBHOOK_COMBOS, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            showMsg("Combo salvo!", "#dcfce7");
-            resetForm();
-            carregarCombos();
-        } catch (err) { showMsg("Erro ao salvar.", "#fee2e2"); }
-    });
+    // 2. CORREÇÃO DA SINTAXE: Usar vírgula e parênteses
+    formData.append('action', action);
+    formData.append('lojaId', idLoja);
+    formData.append('nome', document.getElementById('nome').value);
+    formData.append('descricao', document.getElementById('descricao').value);
+    formData.append('preco', document.getElementById('preco').value);
+    formData.append('ativo', document.getElementById('ativo').checked);
+    formData.append('dataCriacao', new Date().toISOString());
+    
+    // IMPORTANTE: Adicionais precisam ser enviados como String para o n8n entender o array
+    formData.append('adicionais', JSON.stringify(selecionados));
+    
+    if (action === "update") {
+        formData.append('comboId', document.getElementById('comboIdField').value);
+    }
+
+    showMsg("Salvando...");
+    try {
+        await fetch(WEBHOOK_COMBOS, {
+            method: 'POST',
+            // Ao usar FormData, o navegador define o Header 'multipart/form-data' automaticamente
+            body: formData
+        });
+        showMsg("Combo salvo!", "#dcfce7");
+        resetForm();
+        carregarCombos();
+    } catch (err) { 
+        console.error(err);
+        showMsg("Erro ao salvar.", "#fee2e2"); 
+    }
+});
 
     async function deletarCombo(id) {
         if(!confirm("Excluir combo?")) return;
