@@ -425,6 +425,9 @@
                             <h2 class="text-xl font-black uppercase italic">${item.nome}</h2>
                             <button onclick="document.getElementById('modal').remove()" class="w-8 h-8 bg-gray-100 rounded-full font-bold">✕</button>
                         </div>
+						<div>
+							<img src="${item.url}" class="w-full h-full object-cover">
+						</div>
                         <div class="space-y-3">
                             ${item.adicionais?.map(add => `
                                 <label class="flex justify-between p-4 bg-gray-50 rounded-2xl border-2 border-transparent has-[:checked]:border-yellow-400 cursor-pointer">
