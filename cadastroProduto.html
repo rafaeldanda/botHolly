@@ -82,7 +82,9 @@
 
         <div class="section-header">Selecione os Adicionais Permitidos</div>
         <div id="adicionaisContainer" class="adicionais-grid"></div>
-
+		<div class="section-header">Selecione a Imagem Desejada</br>
+			<input type="file" id="fotoInput" accept="image/*">
+		</div>
         <button type="submit" class="btn-main">ENVIAR PRODUTO</button>
     </form>
 
@@ -90,8 +92,7 @@
         <h2>Produtos no Sistema</h2>
         <table>
             <thead>
-    <tr>
-        <th>ID</th>
+    <tr>       
         <th>Nome</th>
         <th>Descrição</th>
         <th>Preço</th>
@@ -159,91 +160,119 @@
    
    
    
-   async function carregarProdutos() {
-    const tbody = document.getElementById('listaProdutos');
-    try {
-        const res = await fetch(WEBHOOK_PRODUTO, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ action: "read", lojaId: idLoja })
-        });
-        const produtos = await res.json();
-        tbody.innerHTML = "";
+	let produtosCarregados = []; // Variável global para suporte à edição
 
-        produtos.forEach(p => {
-            // Usa o produtoId (PROD-XXXX) que confirmamos no seu Network tab
-            const idParaDeletar = p.produtoId || p._id;
+	async function carregarProdutos() {
+		const tbody = document.getElementById('listaProdutos');
+		try {
+			const res = await fetch(WEBHOOK_PRODUTO, {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify({ action: "read", lojaId: idLoja })
+			});
+			produtosCarregados = await res.json();
+			tbody.innerHTML = "";
 
-            tbody.innerHTML += `
-                <tr>
-                    <td><small style="color: #64748b; font-size: 11px;">${idParaDeletar}</small></td>
-                    <td><strong>${p.nome}</strong></td>
-                    <td><small>${p.descricao || '-'}</small></td>
-                    <td>R$ ${p.preco ? parseFloat(p.preco).toFixed(2) : '0.00'}</td>
-                    <td>
-                        <button onclick="deletarProduto('${idParaDeletar}')" class="btn-delete">Excluir</button>
-                    </td>
-                </tr>
-            `;
-        });
-    } catch (err) { 
-        console.error("Erro ao carregar lista:", err);
-        tbody.innerHTML = "<tr><td colspan='5'>Erro ao carregar lista.</td></tr>"; 
-    }
-}
+			produtosCarregados.forEach((p, index) => {
+				const idParaDeletar = p.produtoId || p._id;
+
+				tbody.innerHTML += `
+					<tr>                    
+						<td><strong>${p.nome}</strong></td>
+						<td><small>${p.descricao || '-'}</small></td>
+						<td>R$ ${p.preco ? parseFloat(p.preco).toFixed(2) : '0.00'}</td>                  
+						<td>
+							<button onclick="prepararEdicao(${index})" style="background: var(--primary)">Editar</button>
+							<button onclick="deletarProduto('${idParaDeletar}')" class="btn-delete">Excluir</button>
+						</td>
+					</tr>
+				`;
+			});
+		} catch (err) { 
+			console.error("Erro ao carregar lista:", err);
+			tbody.innerHTML = "<tr><td colspan='5'>Erro ao carregar lista.</td></tr>"; 
+		}
+	}
    
    
    
 
     document.getElementById('productForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    e.preventDefault();
+    
+    const action = document.getElementById('actionField').value;
+    const selecionados = Array.from(document.querySelectorAll('input[name="chkAdd"]:checked'))
+        .map(cb => {
+            const info = dbAdicionais.find(item => item.adicionalId === cb.value);
+            return { 
+                nome: info.nome,
+                preco: info.preco,
+                descricao: info.descricao,
+                adicionalId: info.adicionalId 
+            };
+        });
+		
+	const input = document.getElementById('fotoInput');
+	// Se for um novo cadastro, a foto é obrigatória. Se for edição, talvez não precise.
+	if (action === "create" && input.files.length === 0) {
+		alert("Selecione uma foto primeiro!");
+		return;
+	}
+
+	const formData = new FormData();
+
+	// 1. Adiciona a imagem (se houver)
+	if (input.files.length > 0) {
+		formData.append('data', input.files[0]); 
+	}
+
+	// 2. Adiciona os outros campos UM POR UM no formData
+	formData.append('action', action);
+	formData.append('lojaId', idLoja);
+	formData.append('nome', document.getElementById('nome').value);
+	formData.append('descricao', document.getElementById('descricao').value);
+	formData.append('preco', document.getElementById('preco').value);
+	formData.append('categoriaId', document.getElementById('categoriaId').value);
+	formData.append('ativo', document.getElementById('ativo').checked);
+	formData.append('promocao', document.getElementById('promocao').checked);
+	formData.append('desconto', document.getElementById('desconto').value);
+
+	// Para enviar o ARRAY de adicionais, você precisa transformar em String
+	formData.append('adicionais', JSON.stringify(selecionados));
+
+	if (action === "update") {
+		formData.append('produtoId', idEdicaoAtual);
+	}
+
+
+    const status = document.getElementById('msgStatus');
+    status.style.display = 'block';
+    status.textContent = 'Processando...';
+
+    try {
+        await fetch(WEBHOOK_PRODUTO, {
+            method: 'POST',
+            //headers: {'Content-Type': 'application/json'},
+            //body: JSON.stringify(payload)
+			 body: formData
+        });
+
+        status.textContent = action === "update" ? "Atualizado com sucesso!" : "Cadastrado!";
+        status.style.background = '#dcfce7';
         
-        const selecionados = Array.from(document.querySelectorAll('input[name="chkAdd"]:checked'))
-            .map(cb => {
-                const info = dbAdicionais.find(item => item.adicionalId === cb.value);
-                return { 
-                    nome: info.nome,
-                    preco: info.preco,
-                    descricao: info.descricao,
-                    adicionalId: info.adicionalId 
-                };
-            });
+        // Resetar Formulário
+        document.getElementById('productForm').reset();
+        document.getElementById('actionField').value = "create";
+        document.querySelector('.btn-main').innerText = "ENVIAR PRODUTO";
+        document.querySelector('.btn-main').style.background = "var(--success)";
+        idEdicaoAtual = null;
 
-        const payload = {
-            action: "create",
-            lojaId: idLoja,
-            categoriaId: document.getElementById('categoriaId').value,
-            nome: document.getElementById('nome').value,
-            descricao: document.getElementById('descricao').value,
-            preco: parseFloat(document.getElementById('preco').value),
-            ativo: document.getElementById('ativo').checked,
-            promocao: document.getElementById('promocao').checked,
-            desconto: parseFloat(document.getElementById('desconto').value),
-            dataCadastro: new Date().toISOString(),
-            adicionais: selecionados
-        };
-
-        const status = document.getElementById('msgStatus');
-        status.style.display = 'block';
-        status.textContent = 'Enviando...';
-        status.style.background = '#dbeafe';
-
-        try {
-            const res = await fetch(WEBHOOK_PRODUTO, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            status.textContent = "Cadastrado!";
-            status.style.background = '#dcfce7';
-            
-            document.getElementById('productForm').reset();
-            carregarProdutos();
-        } catch (err) {
-            status.textContent = "Erro ao enviar.";
-            status.style.background = '#fee2e2';
-        }
-    });
+        carregarProdutos();
+    } catch (err) {
+        status.textContent = "Erro ao processar.";
+        status.style.background = '#fee2e2';
+    }
+});
 
     async function deletarProduto(idCustom) {
         if(!confirm("Deseja realmente excluir este item?")) return;
@@ -259,6 +288,53 @@
             carregarProdutos();
         } catch (err) { alert("Erro ao deletar."); }
     }
+	
+	
+	
+	
+	
+	let idEdicaoAtual = null;
+
+function prepararEdicao(index) {
+    const p = produtosCarregados[index];
+    idEdicaoAtual = p.produtoId || p._id;
+
+    // Preenche campos básicos
+    document.getElementById('nome').value = p.nome;
+    document.getElementById('categoriaId').value = p.categoriaId || "";
+    document.getElementById('descricao').value = p.descricao;
+    document.getElementById('preco').value = p.preco;
+    document.getElementById('desconto').value = p.desconto || 0;
+    document.getElementById('ativo').checked = p.ativo;
+    document.getElementById('promocao').checked = p.promocao;
+    
+    // Altera o estado do formulário
+    document.getElementById('actionField').value = "update";
+    const btnSubmit = document.querySelector('.btn-main');
+    btnSubmit.innerText = "ATUALIZAR PRODUTO";
+    btnSubmit.style.background = "var(--primary)";
+
+    // Reseta e marca os adicionais
+    const checkboxes = document.querySelectorAll('input[name="chkAdd"]');
+    checkboxes.forEach(cb => cb.checked = false);
+
+    if (p.adicionais && Array.isArray(p.adicionais)) {
+        p.adicionais.forEach(add => {
+            const cb = Array.from(checkboxes).find(c => c.value === add.adicionalId);
+            if (cb) cb.checked = true;
+        });
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+	
+	
+ 
+ 
+	
+	
+	
+	
 </script>
 </body>
 </html>
