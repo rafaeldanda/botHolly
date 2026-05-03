@@ -621,7 +621,7 @@
                 // GARANTIA: Converter sempre para Float para evitar soma de strings
                 const vKm = parseFloat(db.config.valorTelePorKm || 1); 
                 const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
-
+				alert(db.config.valorTelePorKm);
                 // IMPORTANTE: Aqui nós ATRIBUÍMOS (=), não somamos (+=)
                 // Isso garante que o valor seja resetado a cada cálculo
                 const novoCalculo = km * vKm;
