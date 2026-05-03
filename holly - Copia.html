@@ -593,23 +593,19 @@
         }
     }*/
 	
-	
+
+
+
+
+
+	  
 	
 	async function calcularValorTeleDinamico() {
-    const rua = document.getElementById('cli-end')?.value;
-    const num = document.getElementById('cli-num')?.value;
-    
-    if (!rua || !num || !db.loja.endereco) return;
-
-    const endLoja = typeof db.loja.endereco === 'object' 
-        ? `${db.loja.endereco.rua}, ${db.loja.endereco.numero}` 
-        : db.loja.endereco;
-    const endCli = `${rua}, ${num}, ${db.loja.cidade || 'Porto Alegre'}`;
+    // ... (sua lógica de pegar rua e número continua igual)
 
     try {
         const cLoja = await getCoords(endLoja);
-        // Passamos cLoja como proximidade para o cliente
-        const cCli = await getCoords(endCli, cLoja); 
+        const cCli = await getCoords(endCli, cLoja);
 
         if (cLoja && cCli) {
             const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`);
@@ -617,32 +613,33 @@
 
             if (data.routes?.length > 0) {
                 const km = data.routes[0].distance / 1000;
+
+                // 1. Buscamos o valor do KM de uma variável que NUNCA muda (Ex: valorKmPadrao)
+                // Se não existir no seu DB, defina um valor fixo aqui para teste
+                const precoPorKm = parseFloat(db.config.valorTelePorKm || 2.5);
+                const valorMinimo = parseFloat(db.config.valorMinimo || 5.0);
+
+                // 2. Calculamos o resultado em uma variável TEMPORÁRIA
+                const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
+
+                // 3. Salvamos o RESULTADO em uma propriedade diferente da configuração
+                // Use 'valorEntrega' ou algo que não seja o mesmo nome da configuração de preço
+                db.config.valorEntregaAtual = resultadoFrete;
+
+                console.log(`KM: ${km} | Preço KM: ${precoPorKm} | Total: ${resultadoFrete}`);
                 
-                // Tente buscar o valor por KM. Se não existir 'valorTelePorKm', 
-				// tente 'valorTele' ou use o padrão 2.5
-				const precoPorKm = db.config.valorTelePorKm || db.config.valorTele || 2.5;
-				
-				const vKm = parseFloat(precoPorKm); 
-				const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
-				
-				// Mostra o que ele encontrou para você testar
-				console.log("Preço por KM encontrado:", vKm);
-				
-				const km = data.routes[0].distance / 1000;
-				const novoCalculo = km * vKm;
-				
-				// IMPORTANTE: Salve o RESULTADO em uma variável separada do PREÇO
-				db.config.freteCalculado = Math.max(novoCalculo, vMinimo);
-				
-				// No seu atualizarCarrinhoUI, você deve usar o db.config.freteCalculado
-				atualizarCarrinhoUI();
-                
+                atualizarCarrinhoUI();
             }
         }
     } catch (error) {
         console.error("Erro no cálculo:", error);
     }
 }
+
+
+
+
+	  
 
 	// Ajuste a sua função getCoords para aceitar a proximidade
 	async function getCoords(endereco, proximidade = null) {
