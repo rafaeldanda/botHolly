@@ -618,18 +618,24 @@
             if (data.routes?.length > 0) {
                 const km = data.routes[0].distance / 1000;
                 
-                // GARANTIA: Converter sempre para Float para evitar soma de strings
-                const vKm = parseFloat(db.config.valorTelePorKm || 1); 
-                const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
-				alert(db.config.valorTelePorKm);
-                // IMPORTANTE: Aqui nós ATRIBUÍMOS (=), não somamos (+=)
-                // Isso garante que o valor seja resetado a cada cálculo
-                const novoCalculo = km * vKm;
-                db.config.valorTele = Math.max(novoCalculo, vMinimo);
-
-                // Se sua UI soma os valores, verifique se atualizarCarrinhoUI 
-                // limpa o total antes de renderizar
-                atualizarCarrinhoUI();
+                // Tente buscar o valor por KM. Se não existir 'valorTelePorKm', 
+				// tente 'valorTele' ou use o padrão 2.5
+				const precoPorKm = db.config.valorTelePorKm || db.config.valorTele || 2.5;
+				
+				const vKm = parseFloat(precoPorKm); 
+				const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
+				
+				// Mostra o que ele encontrou para você testar
+				console.log("Preço por KM encontrado:", vKm);
+				
+				const km = data.routes[0].distance / 1000;
+				const novoCalculo = km * vKm;
+				
+				// IMPORTANTE: Salve o RESULTADO em uma variável separada do PREÇO
+				db.config.freteCalculado = Math.max(novoCalculo, vMinimo);
+				
+				// No seu atualizarCarrinhoUI, você deve usar o db.config.freteCalculado
+				atualizarCarrinhoUI();
                 
             }
         }
