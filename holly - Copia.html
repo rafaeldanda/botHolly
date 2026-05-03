@@ -619,7 +619,7 @@
                 const km = data.routes[0].distance / 1000;
                 
                 // GARANTIA: Converter sempre para Float para evitar soma de strings
-                const vKm = parseFloat(db.config.valorTelePorKm || 2.5); 
+                const vKm = parseFloat(db.config.valorTelePorKm || 1); 
                 const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
 
                 // IMPORTANTE: Aqui nós ATRIBUÍMOS (=), não somamos (+=)
