@@ -596,54 +596,47 @@
 	
 	
 	async function calcularValorTeleDinamico() {
-		const rua = document.getElementById('cli-end')?.value;
-		const num = document.getElementById('cli-num')?.value;
-		
-		// 1. Verificações iniciais
-		if (!rua || !num || !db.loja.endereco) return;
+    const rua = document.getElementById('cli-end')?.value;
+    const num = document.getElementById('cli-num')?.value;
+    
+    if (!rua || !num || !db.loja.endereco) return;
 
-		// Formata o endereço da loja e do cliente
-		const endLoja = typeof db.loja.endereco === 'object' 
-			? `${db.loja.endereco.rua}, ${db.loja.endereco.numero}` 
-			: db.loja.endereco;
-		const cidadePadrao = db.loja.cidade || 'Porto Alegre';
-		const endCli = `${rua}, ${num}, ${cidadePadrao}`;
+    const endLoja = typeof db.loja.endereco === 'object' 
+        ? `${db.loja.endereco.rua}, ${db.loja.endereco.numero}` 
+        : db.loja.endereco;
+    const endCli = `${rua}, ${num}, ${db.loja.cidade || 'Porto Alegre'}`;
 
-		try {
-			// 2. Obtém coordenadas da Loja
-			const cLoja = await getCoords(endLoja);
-			if (!cLoja) {
-				console.error("Não foi possível localizar o endereço da loja.");
-				return;
-			}
+    try {
+        const cLoja = await getCoords(endLoja);
+        // Passamos cLoja como proximidade para o cliente
+        const cCli = await getCoords(endCli, cLoja); 
 
-			// 3. Obtém coordenadas do Cliente usando a Loja como 'proximity'
-			// Isso garante que o Mapbox busque ruas próximas à sua operação
-			const cCli = await getCoords(endCli, cLoja); 
+        if (cLoja && cCli) {
+            const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`);
+            const data = await res.json();
 
-			if (cLoja && cCli) {
-				// 4. Chamada da Directions API
-				const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`);
-				const data = await res.json();
+            if (data.routes?.length > 0) {
+                const km = data.routes[0].distance / 1000;
+                
+                // GARANTIA: Converter sempre para Float para evitar soma de strings
+                const vKm = parseFloat(db.config.valorTelePorKm || 2.5); 
+                const vMinimo = parseFloat(db.config.valorMinimo || 5.0);
 
-				if (data.routes?.length > 0) {
-					const km = data.routes[0].distance / 1000;
-					const vKm = parseFloat(db.config.valorTele || 2.5);
-					const vMinimo = parseFloat(db.config.valorMinimo || 5);
+                // IMPORTANTE: Aqui nós ATRIBUÍMOS (=), não somamos (+=)
+                // Isso garante que o valor seja resetado a cada cálculo
+                const novoCalculo = km * vKm;
+                db.config.valorTele = Math.max(novoCalculo, vMinimo);
 
-					// 5. Cálculo do valor com trava de valor mínimo
-					db.config.valorTele = Math.max(km * vKm, vMinimo);
-					
-					atualizarCarrinhoUI();
-					console.log(`Sucesso: ${km.toFixed(2)}km | Valor: R$ ${db.config.valorTele.toFixed(2)}`);
-				} else {
-					console.warn("Mapbox não encontrou uma rota terrestre válida.");
-				}
-			}
-		} catch (error) {
-			console.error("Erro no cálculo de tele-entrega:", error);
-		}
-	}
+                // Se sua UI soma os valores, verifique se atualizarCarrinhoUI 
+                // limpa o total antes de renderizar
+                atualizarCarrinhoUI();
+                
+            }
+        }
+    } catch (error) {
+        console.error("Erro no cálculo:", error);
+    }
+}
 
 	// Ajuste a sua função getCoords para aceitar a proximidade
 	async function getCoords(endereco, proximidade = null) {
