@@ -635,7 +635,11 @@
 			
 			    // Cálculo Final
 			    const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
-				alert(resultadoFrete);
+				
+				if(resultadoFrete >= 20){
+					alert("Identificamos que o valor da tele-entrega ficou acima do normal.\n Verifica se o edereço esta com 'rua/av' junto ao endereço. \n errado: 'albion' \n certo: 'rua albion'  ");
+				}
+				
 			    // Aqui salvamos o resultado para a UI e para o envio do pedido
 			    valorTeleCalculado = resultadoFrete;
 			
