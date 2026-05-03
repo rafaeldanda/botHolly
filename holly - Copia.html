@@ -628,7 +628,7 @@
                 // 4. Lógica de Preço (Usando nomes diferentes para não somar/atropelar)
                 // valorTelePorKm é o seu preço fixo (ex: 2.50)
                 // valorMinimo é o mínimo (ex: 5.00)
-                const precoPorKm = parseFloat(db.config.valorTelePorKm || 2.5);
+                const precoPorKm = parseFloat(db.config.valorTele || 2.5);
                 const valorMinimo = parseFloat(db.config.valorMinimo || 5.0);
 				alert("valor por km: "+precoPorKm+" valor minimo "+valorMinimo);
                 // Cálculo Final
