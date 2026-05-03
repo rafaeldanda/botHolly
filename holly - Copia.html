@@ -285,6 +285,7 @@
     let cupomAplicado = ""; 
     let mapaCategorias = {};
     let lojaOnline = false;
+	let valorTeleCalculado = 0;
     const idLoja = new URLSearchParams(window.location.search).get('l');
 
     // --- UTILITÁRIOS ---
@@ -513,7 +514,7 @@
                 </div>`;
         }).join('');
 
-        const tele = entregaAtiva ? parseFloat(db.config.valorTele || 0) : 0;
+        const tele = entregaAtiva ? parseFloat(valorTeleCalculado || 0) : 0;
         const valorCupom = subtotal * (descontoAtivo / 100);
         const total = (subtotal + tele) - valorCupom;
 
@@ -636,7 +637,7 @@
 			    const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
 				alert(resultadoFrete);
 			    // Aqui salvamos o resultado para a UI e para o envio do pedido
-			    db.config.valorTele = resultadoFrete;
+			    valorTeleCalculado = resultadoFrete;
 			
 			    // Log para você conferir no console (F12) que o precoPorKm não mudou
 			    console.log(`Cálculo: ${km.toFixed(2)}km x R$ ${precoPorKm.toFixed(2)} (Min: R$ ${valorMinimo.toFixed(2)})`);
