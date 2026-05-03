@@ -630,7 +630,7 @@
                 // valorMinimo é o mínimo (ex: 5.00)
                 const precoPorKm = parseFloat(db.config.valorTelePorKm || 2.5);
                 const valorMinimo = parseFloat(db.config.valorMinimo || 5.0);
-
+				alert("valor por km: "+precoPorKm+" valor minimo "+valorMinimo);
                 // Cálculo Final
                 const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
 
