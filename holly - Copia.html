@@ -601,11 +601,22 @@
 	  
 	
 	async function calcularValorTeleDinamico() {
-    // ... (sua lógica de pegar rua e número continua igual)
+    const rua = document.getElementById('cli-end')?.value;
+    const num = document.getElementById('cli-num')?.value;
+    
+    // 1. Verificações de segurança
+    if (!rua || !num || !db.loja.endereco) return;
+
+    // 2. Definição dos endereços (faltava isso no seu código)
+    const endLoja = typeof db.loja.endereco === 'object' 
+        ? `${db.loja.endereco.rua}, ${db.loja.endereco.numero}` 
+        : db.loja.endereco;
+    const endCli = `${rua}, ${num}, ${db.loja.cidade || 'Porto Alegre'}`;
 
     try {
+        // 3. Obtém coordenadas
         const cLoja = await getCoords(endLoja);
-        const cCli = await getCoords(endCli, cLoja);
+        const cCli = await getCoords(endCli, cLoja); // Usa a loja como proximidade
 
         if (cLoja && cCli) {
             const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`);
@@ -614,25 +625,25 @@
             if (data.routes?.length > 0) {
                 const km = data.routes[0].distance / 1000;
 
-                // 1. Buscamos o valor do KM de uma variável que NUNCA muda (Ex: valorKmPadrao)
-                // Se não existir no seu DB, defina um valor fixo aqui para teste
+                // 4. Lógica de Preço (Usando nomes diferentes para não somar/atropelar)
+                // valorTelePorKm é o seu preço fixo (ex: 2.50)
+                // valorMinimo é o mínimo (ex: 5.00)
                 const precoPorKm = parseFloat(db.config.valorTelePorKm || 2.5);
                 const valorMinimo = parseFloat(db.config.valorMinimo || 5.0);
 
-                // 2. Calculamos o resultado em uma variável TEMPORÁRIA
+                // Cálculo Final
                 const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
 
-                // 3. Salvamos o RESULTADO em uma propriedade diferente da configuração
-                // Use 'valorEntrega' ou algo que não seja o mesmo nome da configuração de preço
-                db.config.valorEntregaAtual = resultadoFrete;
+                // SALVAMOS NO valorTele (que é o que sua UI e seu Payload de envio já usam)
+                db.config.valorTele = resultadoFrete;
 
-                console.log(`KM: ${km} | Preço KM: ${precoPorKm} | Total: ${resultadoFrete}`);
+                console.log(`Sucesso! Distância: ${km.toFixed(2)}km | Valor: R$ ${resultadoFrete.toFixed(2)}`);
                 
                 atualizarCarrinhoUI();
             }
         }
     } catch (error) {
-        console.error("Erro no cálculo:", error);
+        console.error("Erro no cálculo de frete:", error);
     }
 }
 
