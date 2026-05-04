@@ -121,11 +121,15 @@
                 <label>Nome Completo</label>
                 <input type="text" id="nome" required>
             </div>
+			<div class="input-group">
+                <label>Nome Da Empresa</label>
+                <input type="text" id="nomeEmpresa" required>
+            </div>
 
             <div class="row">
                 <div class="input-group">
                     <label>E-mail</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email"  required>
                 </div>
                 <div class="input-group">
                     <label>Telefone</label>
@@ -136,13 +140,36 @@
             <div class="row">
                 <div class="input-group">
                     <label>CPF</label>
-                    <input type="text" id="cpf" required>
+                    <input type="text" id="cpf" placeholder="000.000.000-00" required>
                 </div>
                 <div class="input-group">
                     <label>CNPJ</label>
-                    <input type="text" id="cnpj" required>
+                    <input type="text" id="cnpj" placeholder="00.000.000/0000-00" required>
                 </div>
             </div>
+			<div class="input-group">
+				<label>Categoria da Loja</label>
+				<select id="categoria" required style="width: 100%; padding: 0.7rem; border: 1px solid #ddd; border-radius: 4px; background: white;">
+					<option value="" disabled selected>Selecione uma categoria</option>
+					<optgroup label="Alimentação">
+						<option value="restaurante">Restaurante / Marmitaria</option>
+						<option value="lanchonete">Lanchonete / Hamburgueria</option>
+						<option value="pizzaria">Pizzaria</option>
+						<option value="padaria">Padaria / Panificadora</option>
+					</optgroup>
+					<optgroup label="Comércio">
+						<option value="minimercado">Mini Mercado</option>
+						<option value="distribuidora">Distribuidora de Bebidas</option>
+						<option value="farmacia">Farmácia</option>
+						<option value="petshop">Pet Shop</option>
+					</optgroup>
+					<optgroup label="Moda e Outros">
+						<option value="vestuario">Loja de Roupas</option>
+						<option value="eletronicos">Eletrônicos</option>
+						<option value="outros">Outros</option>
+					</optgroup>
+				</select>
+			</div>
 
             <div class="section-title">Endereço da Loja</div>
             <div class="row">
@@ -202,6 +229,8 @@
 
             const payload = {
                 nome: document.getElementById('nome').value,
+				nomeEmpresa: document.getElementById('nomeEmpresa').value,
+				categoria: document.getElementById('categoria').value,
                 telefone: document.getElementById('telefone').value,
                 email: document.getElementById('email').value,
                 cpf: document.getElementById('cpf').value,
