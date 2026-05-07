@@ -285,6 +285,7 @@
     let cupomAplicado = ""; 
     let mapaCategorias = {};
     let lojaOnline = false;
+	let valorTeleCalculado = 0;
     const idLoja = new URLSearchParams(window.location.search).get('l');
 
     // --- UTILITÁRIOS ---
@@ -513,7 +514,7 @@
                 </div>`;
         }).join('');
 
-        const tele = entregaAtiva ? parseFloat(db.config.valorTele || 0) : 0;
+        const tele = entregaAtiva ? parseFloat(valorTeleCalculado || 0) : 0;
         const valorCupom = subtotal * (descontoAtivo / 100);
         const total = (subtotal + tele) - valorCupom;
 
@@ -547,7 +548,7 @@
                     ${descontoAtivo > 0 ? `<div class="flex justify-between text-green-600"><span>Desconto (${descontoAtivo}%)</span><span>- R$ ${valorCupom.toFixed(2)}</span></div>` : ''}
                     <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${Math.max(0, total).toFixed(2)}</span></div>
                 </div>
-                <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full ${lojaOnline ? 'bg-yellow-400' : 'bg-gray-400 opacity-50 cursor-not-allowed'} py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all">
+                <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full ${lojaOnline ? 'bg-yellow-400' : 'bg-gray-400 opacity-50 cursor-not-allowed'} py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all" ${!lojaOnline ? 'disabled' : ''}>
                     ${lojaOnline ? 'Confirmar Pedido' : 'LOJA FECHADA'}
                 </button>
             </div>`;
@@ -570,7 +571,7 @@
         atualizarCarrinhoUI();
     }
 
-    async function calcularValorTeleDinamico() {
+    /*async function calcularValorTeleDinamico() {
         const rua = document.getElementById('cli-end')?.value;
         const num = document.getElementById('cli-num')?.value;
         if (!rua || !num || !db.loja.endereco) return;
@@ -591,7 +592,101 @@
                 atualizarCarrinhoUI();
             }
         }
+    }*/
+	
+
+
+
+
+
+	  
+	
+	async function calcularValorTeleDinamico() {
+    const rua = document.getElementById('cli-end')?.value;
+    const num = document.getElementById('cli-num')?.value;
+    
+    // 1. Verificações de segurança
+    if (!rua || !num || !db.loja.endereco) return;
+
+    // 2. Definição dos endereços (faltava isso no seu código)
+    const endLoja = typeof db.loja.endereco === 'object' 
+        ? `${db.loja.endereco.rua}, ${db.loja.endereco.numero}` 
+        : db.loja.endereco;
+    const endCli = `${rua}, ${num}, ${db.loja.cidade || 'Porto Alegre'}`;
+
+    try {
+        // 3. Obtém coordenadas
+        const cLoja = await getCoords(endLoja);
+        const cCli = await getCoords(endCli, cLoja); // Usa a loja como proximidade
+
+        if (cLoja && cCli) {
+            const res = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${cLoja[0]},${cLoja[1]};${cCli[0]},${cCli[1]}?access_token=${TOKEN_MAP_DELIVERY}`);
+            const data = await res.json();
+
+            if (data.routes?.length > 0) {
+			    const km = data.routes[0].distance / 1000;
+			
+			    // --- PROTEÇÃO CONTRA SOBREPOSIÇÃO ---
+			    // Tentamos ler uma chave exclusiva para o PREÇO (valorTelePorKm).
+			    // Se ela não existir (undefined), usamos o valor fixo 2.5.
+			    // NUNCA usamos db.config.valorTele para ler o multiplicador, pois ele é sobrescrito.
+			    const precoPorKm = parseFloat(db.config.valorTele || 2.5);
+			    const valorMinimo = parseFloat(db.config.valorMinimo || 5.0);
+			
+			    // Cálculo Final
+			    const resultadoFrete = Math.max(km * precoPorKm, valorMinimo);
+				
+				if(resultadoFrete >= 20){
+					alert("Identificamos que o valor da tele-entrega ficou acima do normal.\nVerifica se o edereço esta com 'rua/av' junto ao endereço.\n\nerrado: 'albion'\ncerto: 'rua albion'  ");
+				}
+				
+			    // Aqui salvamos o resultado para a UI e para o envio do pedido
+			    valorTeleCalculado = resultadoFrete;
+			
+			    // Log para você conferir no console (F12) que o precoPorKm não mudou
+			    console.log(`Cálculo: ${km.toFixed(2)}km x R$ ${precoPorKm.toFixed(2)} (Min: R$ ${valorMinimo.toFixed(2)})`);
+			    console.log(`Resultado salvo em valorTele: R$ ${db.config.valorTele.toFixed(2)}`);
+			    
+			    atualizarCarrinhoUI();
+			}
+        }
+    } catch (error) {
+        console.error("Erro no cálculo de frete:", error);
     }
+}
+
+
+
+
+	  
+
+	// Ajuste a sua função getCoords para aceitar a proximidade
+	async function getCoords(endereco, proximidade = null) {
+		let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(endereco)}.json?access_token=${TOKEN_MAP_DELIVERY}&limit=1&country=br`;
+		
+		// Se passarmos a coordenada da loja, a busca fica muito mais precisa
+		if (proximidade) {
+			url += `&proximity=${proximidade[0]},${proximidade[1]}`;
+		}
+
+		try {
+			const res = await fetch(url);
+			const data = await res.json();
+			return data.features?.[0]?.center || null; // Retorna [long, lat]
+		} catch (e) {
+			return null;
+		}
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
     async function finalizarPedido() {
         const nome = document.getElementById('cli-nome')?.value;
