@@ -187,7 +187,10 @@
         document.getElementById('categoriaId').value = categoriaId;
         document.getElementById('nome').value = nome;
         document.getElementById('ativo').checked = ativo;
-        window.scrollTo(0, 0);
+        window.scrollTo({
+		  top: 0,
+		  behavior: 'smooth'
+		});
     };
 
     function showMessage(text, isError = false) {
