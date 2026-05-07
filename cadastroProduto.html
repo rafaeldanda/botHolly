@@ -249,6 +249,11 @@
     status.style.display = 'block';
     status.textContent = 'Processando...';
 
+	window.scrollTo({
+	  top: 0,
+	  behavior: 'smooth'
+	});
+		
     try {
         await fetch(WEBHOOK_PRODUTO, {
             method: 'POST',
@@ -260,10 +265,7 @@
         status.textContent = action === "update" ? "Atualizado com sucesso!" : "Cadastrado!";
         status.style.background = '#dcfce7';
 
-		window.scrollTo({
-		  top: 0,
-		  behavior: 'smooth'
-		});
+		
 		
         // Resetar Formulário
         document.getElementById('productForm').reset();
