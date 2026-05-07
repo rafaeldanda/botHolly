@@ -224,7 +224,10 @@
         };
 
         showMsg("Salvando...", "#dbeafe");
-
+		window.scrollTo({
+		  top: 0,
+		  behavior: 'smooth'
+		});
         try {
             await fetch(API_URL, {
                 method: 'POST',
