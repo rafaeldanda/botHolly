@@ -183,7 +183,10 @@
             document.getElementById('preco').value = item.preco;
             document.getElementById('descricao').value = item.descricao || "";
             document.getElementById('ativo').checked = item.ativo;
-            window.scrollTo(0, 0);
+            window.scrollTo({
+			  top: 0,
+			  behavior: 'smooth'
+			});
         }
     };
 
