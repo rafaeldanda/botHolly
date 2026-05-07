@@ -155,14 +155,19 @@
         const res = await apiCall(action, data);
 
         if (res && res.status) {
-            showMessage("✓ " + res.status);
+            showMessage("✓ " + res.status);			
             form.reset();
             document.getElementById('cupomId').value = '';
             loadCombos();
         } else {
             showMessage("✕ Erro ao processar requisição.", true);
         }
-        
+
+		window.scrollTo({
+		  top: 0,
+		  behavior: 'smooth'
+		});
+		
         btnSubmit.disabled = false;
         btnSubmit.innerText = "Salvar Combo";
     });
