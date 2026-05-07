@@ -205,6 +205,10 @@
             body: formData
         });
         showMsg("Combo salvo!", "#dcfce7");
+		window.scrollTo({
+		  top: 0,
+		  behavior: 'smooth'
+		});
         resetForm();
         carregarCombos();
     } catch (err) { 
