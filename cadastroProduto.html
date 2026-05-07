@@ -259,7 +259,12 @@
 
         status.textContent = action === "update" ? "Atualizado com sucesso!" : "Cadastrado!";
         status.style.background = '#dcfce7';
-        
+
+		window.scrollTo({
+		  top: 0,
+		  behavior: 'smooth'
+		});
+		
         // Resetar Formulário
         document.getElementById('productForm').reset();
         document.getElementById('actionField').value = "create";
