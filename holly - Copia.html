@@ -641,7 +641,11 @@
 				}
 				
 			    // Aqui salvamos o resultado para a UI e para o envio do pedido
-			    valorTeleCalculado = resultadoFrete;
+			    if(resultadoFrete < db.config.valorMinimo){
+					valorTeleCalculado = db.config.valorMinimo;
+				} else {
+					valorTeleCalculado = resultadoFrete;
+				}
 			
 			    // Log para você conferir no console (F12) que o precoPorKm não mudou
 			    console.log(`Cálculo: ${km.toFixed(2)}km x R$ ${precoPorKm.toFixed(2)} (Min: R$ ${valorMinimo.toFixed(2)})`);
