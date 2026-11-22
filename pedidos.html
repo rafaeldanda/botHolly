@@ -195,7 +195,7 @@
 
             // Info da Loja (pelo primeiro pedido)
             const loja = pedidos[0].loja;
-			const url = `https://rafaeldanda.github.io/botHolly/holly%20-%20Copia.html?l=${loja.lojaId}`;
+			const url = `https://rafaeldanda.github.io/botHolly/holly.html?l=${loja.lojaId}`;
             document.getElementById('loja-nome').innerText = loja.nome;
 			document.getElementById('loja-url').innerHTML = `<a href="${url}" target="_blank" style="color: white; text-decoration: underline;">Acessar Loja</a>`;
             document.getElementById('loja-ralatorio').innerHTML = '<a href="#" onclick="event.preventDefault(); abrirCardVendas(window.totalvendido, window.totalCartao, window.totalPix)" style="color: white; text-decoration: underline;">Relatorio do dia</a></br>';
