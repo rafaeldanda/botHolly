@@ -641,7 +641,13 @@
 				}
 				
 			    // Aqui salvamos o resultado para a UI e para o envio do pedido
-			    valorTeleCalculado = resultadoFrete;
+			    if(resultadoFrete < db.config.valorMinimo){
+					valorTeleCalculado = db.config.valorMinimo;
+					console.log("Tele minima: " + valorTeleCalculado);
+				} else {
+					valorTeleCalculado = resultadoFrete;
+					console.log("Tele valor calculado: " + valorTeleCalculado);
+				}
 			
 			    // Log para você conferir no console (F12) que o precoPorKm não mudou
 			    console.log(`Cálculo: ${km.toFixed(2)}km x R$ ${precoPorKm.toFixed(2)} (Min: R$ ${valorMinimo.toFixed(2)})`);
@@ -720,6 +726,7 @@
                 endereco: entregaAtiva ? `${document.getElementById('cli-end').value}, ${document.getElementById('cli-num').value}, ${document.getElementById('cli-comp').value}` : "RETIRADA" 
             },
             totalPedido: (subtotal + taxa) - descCupom,
+			totalTele: valorTeleCalculado,
 			status:'solicitada',
             formaPagamento: document.getElementById('forma-pagamento').value
         };
