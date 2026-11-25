@@ -132,51 +132,96 @@
     }
 	
 	
-		/* A camada que cobre a tela toda */
 	.modal-overlay {
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background: rgba(0, 0, 0, 0.6); /* Fundo escurecido */
-		display: none;
-		justify-content: center; /* Centraliza horizontalmente */
-		align-items: center;     /* Centraliza verticalmente */
-		z-index: 1000;           /* Garante que fique acima de tudo */
-	}
+	position: fixed;
+	inset: 0; /* equivale a top, right, bottom, left: 0 */
+	background: rgba(15, 23, 42, 0.65);
+	backdrop-filter: blur(4px);
+	display: none; /* use display: flex via classe .ativo para abrir */
+	justify-content: center;
+	align-items: center;
+	padding: 16px;
+	z-index: 1000;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+}
 
-	/* O Card em si */
-	.card {
-		background: white;
-		padding: 24px;
-		border-radius: 12px;
-		box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-		width: 90%;
-		max-width: 400px;
-		animation: surgir 0.3s ease-out;
-	}
+.modal-overlay.ativo {
+	display: flex;
+	opacity: 1;
+}
 
-	.card-actions {
-		display: flex;
-		justify-content: center; /* Mudou de flex-end para center */
-		gap: 10px;
-		margin-top: 20px;
-		width: 100%; /* Garante que o container ocupe a largura total do card */
-	}
+.card {
+	background: #ffffff;
+	color: #1e293b;
+	width: 100%;
+	max-width: 420px;
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+	transform: translateY(10px) scale(0.98);
+	transition: transform 0.2s ease;
+}
 
-	/* Animação para o card não aparecer de soco */
-	@keyframes surgir {
-		from { opacity: 0; transform: translateY(-20px); }
-		to { opacity: 1; transform: translateY(0); }
-	}
-		
-		/* Garante que o conteúdo do card apareça */
+.modal-overlay.ativo .card {
+	transform: translateY(0) scale(1);
+}
+
+.card h3 {
+	margin: 0 0 6px;
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.modal-subtitulo {
+	display: block;
+	font-size: 0.875rem;
+	line-height: 1.45;
+	color: #64748b;
+}
+
 .card-content {
-    display: block;
-    width: 100%;
-    min-height: 200px; /* Dá um espaço para o vídeo não sumir */
-    margin-top: 15px;
+	margin: 20px 0;
+	padding-top: 16px;
+	border-top: 1px solid #e2e8f0;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+/* Se .card-content estiver vazio, não deixa espaço extra sobrando */
+.card-content:empty {
+	display: none;
+}
+
+.card-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-top: 8px;
+}
+
+.btn-secundario {
+	width: 100%;
+	padding: 12px 18px;
+	border: none;
+	border-radius: 10px;
+	background: #16a34a; /* verde para confirmação; ajuste à paleta do site */
+	color: #ffffff;
+	font-size: 0.95rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.btn-secundario:hover {
+	background: #15803d;
+}
+
+.btn-secundario:active {
+	transform: scale(0.98);
 }
 
 .video-responsivo {
@@ -245,20 +290,20 @@
         </div>
     </div>
 	
-	<div id="modal-container" class="modal-overlay"> 
-		<div class="card">
-			<h3>Finalizar Pedido</h3></br>
-			<small>Fique atento ao celular ou a chegada do entregador.</small>			
+	<div id="modal-container" class="modal-overlay">
+		<div class="card" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+			<h3 id="modal-titulo">Finalizar Pedido</h3>
+			<small class="modal-subtitulo">Fique atento ao celular ou à chegada do entregador.</small>
+	
 			<div class="card-content">
-			
-				
-				
+				<!-- Resumo do pedido, itens, valor ou observações entram aqui -->
 			</div>
+	
 			<div class="card-actions">
-				<button class="btn-secundario" onclick="fecharModal()">Confirmar</button>				
+				<button type="button" class="btn-secundario" onclick="fecharModal()">Confirmar</button>
 			</div>
 		</div>
-	</div>
+    </div>
   
   
   
