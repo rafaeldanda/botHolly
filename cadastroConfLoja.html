@@ -99,6 +99,16 @@
                     <span class="slider"></span>
                 </label>
             </div>
+			<div class="config-item">
+                <div class="config-info">
+                    <span class="config-title">Receber GSM</span>
+                    <span class="config-desc">Defina se esta ou não disponivel para receber GSM no celular</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="gsm">
+                    <span class="slider"></span>
+                </label>
+            </div>
             <div class="config-item">
                 <div class="config-info">
                     <span class="config-title">Pagamento via Pix</span>
@@ -190,6 +200,7 @@
                 document.getElementById('cartao').checked = !!data.cartao;
                 document.getElementById('retiradaLocal').checked = !!data.retiradaLocal;
 				document.getElementById('raspadinha').checked = !!data.raspadinha;
+				document.getElementById('gsm').checked = !!data.gsm;
 
                 // Popula os Campos Numéricos
                 // Garante que se vier vazio, não quebre o layout
@@ -218,6 +229,7 @@
             cartao: document.getElementById('cartao').checked,
             retiradaLocal: document.getElementById('retiradaLocal').checked,
 			raspadinha: document.getElementById('raspadinha').checked,
+			gsm: document.getElementById('gsm').checked,
             valorTele: parseFloat(document.getElementById('valorTele').value || 0),
             valorMinimo: parseFloat(document.getElementById('valorMinimo').value || 0),
 			linkCarrinho: formatarLinkYoutube(document.getElementById('linkCarrinho').value.trim() || "")
