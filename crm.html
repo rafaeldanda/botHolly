@@ -1,0 +1,1524 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CRM Geolocalizado & Mapa de Calor</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Leaflet.heat Plugin -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Scrollbar personalizada discreta */
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Ajustes do Mapa Leaflet */
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #e2e8f0;
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 16px !important;
+            box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.2) !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        .leaflet-popup-content {
+            margin: 0 !important;
+            width: 280px !important;
+        }
+
+        /* Marcador customizado no mapa */
+        .custom-pin {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            color: #fff;
+            font-weight: 800;
+            font-size: 11px;
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.15s ease;
+        }
+        .custom-pin:hover {
+            transform: scale(1.18);
+            z-index: 999 !important;
+        }
+
+        /* Animação suave de entrada do modal */
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-modal {
+            animation: modalFadeIn 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen w-screen flex flex-col">
+
+    <!-- BARRA SUPERIOR (HEADER) -->
+    <header class="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center justify-between gap-3 z-30 shrink-0 shadow-sm">
+        <div class="flex items-center gap-3">
+            <!-- Botão abrir/fechar lateral no mobile -->
+            <button id="btn-toggle-sidebar" onclick="toggleSidebar()" class="lg:hidden p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 transition" title="Abrir/Fechar Filtros">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+            </button>
+
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-rose-600 flex items-center justify-center text-white shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-tight">GeoCRM • Áreas Quentes</h1>
+                    <p id="status-conexao" class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span>
+                        Conectando ao webhook...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs Rápidos no Topo (Desktop) -->
+        <div class="hidden xl:flex items-center gap-3">
+            <div class="bg-slate-50 border border-slate-200/80 px-3.5 py-1.5 rounded-xl">
+                <span class="text-[10px] font-semibold uppercase text-slate-400 block">Pedidos Filtrados</span>
+                <span id="top-kpi-pedidos" class="text-sm font-extrabold text-slate-900">0</span>
+            </div>
+            <div class="bg-emerald-50/70 border border-emerald-200/80 px-3.5 py-1.5 rounded-xl">
+                <span class="text-[10px] font-semibold uppercase text-emerald-600 block">Faturamento</span>
+                <span id="top-kpi-faturamento" class="text-sm font-extrabold text-emerald-700">R$ 0,00</span>
+            </div>
+            <div class="bg-blue-50/70 border border-blue-200/80 px-3.5 py-1.5 rounded-xl">
+                <span class="text-[10px] font-semibold uppercase text-blue-600 block">Ticket Médio</span>
+                <span id="top-kpi-ticket" class="text-sm font-extrabold text-blue-700">R$ 0,00</span>
+            </div>
+            <div class="bg-purple-50/70 border border-purple-200/80 px-3.5 py-1.5 rounded-xl">
+                <span class="text-[10px] font-semibold uppercase text-purple-600 block">Clientes Únicos</span>
+                <span id="top-kpi-clientes" class="text-sm font-extrabold text-purple-700">0</span>
+            </div>
+            <div class="bg-rose-50/70 border border-rose-200/80 px-3.5 py-1.5 rounded-xl">
+                <span class="text-[10px] font-semibold uppercase text-rose-600 block">Em Risco / Sumidos</span>
+                <span id="top-kpi-sumidos" class="text-sm font-extrabold text-rose-700">0</span>
+            </div>
+        </div>
+
+        <!-- Ações Direitas -->
+        <div class="flex items-center gap-2">
+            <button id="btn-dados-exemplo" onclick="carregarDadosExemplo()" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition active:scale-95" title="Simular base rica para testar mapa de calor">
+                <span>Dados Exemplo</span>
+            </button>
+            <button id="btn-atualizar" onclick="buscarDadosWebhook()" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white shadow-sm transition active:scale-95">
+                <svg id="icon-refresh" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span class="hidden sm:inline">Atualizar Webhook</span>
+                <span class="sm:hidden">Sincronizar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- CORPO PRINCIPAL (SIDEBAR + MAPA) -->
+    <div class="flex-1 flex relative overflow-hidden">
+
+        <!-- OVERLAY MOBILE DA SIDEBAR -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-slate-900/40 backdrop-blur-[1px] z-20 hidden lg:hidden"></div>
+
+        <!-- PAINEL LATERAL DE FILTROS E CRM -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-[88vw] max-w-[370px] bg-white border-r border-slate-200 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out shadow-xl lg:shadow-none h-full">
+            
+            <!-- Abas da Barra Lateral: Filtros vs Lista CRM -->
+            <div class="p-3 border-b border-slate-200 bg-slate-50/70 shrink-0">
+                <div class="grid grid-cols-2 gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+                    <button id="tab-btn-filtros" onclick="alternarAbaSidebar('filtros')" class="py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-sm transition">
+                        Filtros & Calor
+                    </button>
+                    <button id="tab-btn-clientes" onclick="alternarAbaSidebar('clientes')" class="py-2 px-3 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5">
+                        <span>Base CRM</span>
+                        <span id="badge-qtd-clientes" class="bg-slate-300/80 text-slate-800 px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+                    </button>
+                </div>
+
+                <!-- Resumo Compacto (visível em telas menores que XL) -->
+                <div class="grid grid-cols-3 gap-1.5 mt-2.5 xl:hidden">
+                    <div class="bg-white border border-slate-200 p-2 rounded-xl text-center">
+                        <span class="text-[9px] uppercase font-bold text-slate-400 block">Pedidos</span>
+                        <span id="mob-kpi-pedidos" class="text-xs font-extrabold text-slate-900">0</span>
+                    </div>
+                    <div class="bg-white border border-slate-200 p-2 rounded-xl text-center">
+                        <span class="text-[9px] uppercase font-bold text-emerald-600 block">Faturamento</span>
+                        <span id="mob-kpi-faturamento" class="text-xs font-extrabold text-emerald-700">R$ 0</span>
+                    </div>
+                    <div class="bg-white border border-slate-200 p-2 rounded-xl text-center">
+                        <span class="text-[9px] uppercase font-bold text-rose-600 block">Sumidos</span>
+                        <span id="mob-kpi-sumidos" class="text-xs font-extrabold text-rose-700">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTEÚDO ABA 1: FILTROS -->
+            <div id="panel-filtros" class="flex-1 overflow-y-auto custom-scroll p-4 space-y-4">
+                
+                <!-- Cabeçalho Filtros + Limpar -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-extrabold uppercase tracking-wider text-slate-400">Controles do Mapa</span>
+                    <button onclick="limparFiltros()" class="text-xs font-bold text-orange-600 hover:text-orange-700 hover:underline">
+                        Limpar filtros
+                    </button>
+                </div>
+
+                <!-- Filtro Geográfico: Área Visível no Mapa -->
+                <label class="flex items-center justify-between p-3 rounded-xl bg-amber-50/80 border border-amber-200/80 cursor-pointer select-none">
+                    <div class="pr-2">
+                        <span class="text-xs font-bold text-slate-800 block">Filtrar apenas área visível</span>
+                        <span class="text-[11px] text-slate-500">Atualiza CRM conforme o zoom/região do mapa</span>
+                    </div>
+                    <input type="checkbox" id="filtro-bounds" onchange="aplicarFiltros()" class="w-4 h-4 accent-orange-600 rounded cursor-pointer">
+                </label>
+
+                <!-- Modo de Visualização no Mapa -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Camada de Visualização</label>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-xl">
+                        <button type="button" data-view="ambos" onclick="setModoVisualizacao('ambos')" class="view-mode-btn py-1.5 px-2 rounded-lg text-[11px] font-bold bg-slate-900 text-white shadow-sm transition">
+                            Ambos
+                        </button>
+                        <button type="button" data-view="calor" onclick="setModoVisualizacao('calor')" class="view-mode-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">
+                            Só Calor
+                        </button>
+                        <button type="button" data-view="pinos" onclick="setModoVisualizacao('pinos')" class="view-mode-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition">
+                            Só Pinos
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Métrica de Intensidade do Calor -->
+                <div>
+                    <label for="filtro-metrica" class="block text-xs font-bold text-slate-700 mb-1.5">Intensidade do Calor (Peso)</label>
+                    <select id="filtro-metrica" onchange="aplicarFiltros()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                        <option value="faturamento">Faturamento (R$ totalPedido)</option>
+                        <option value="quantidade">Quantidade de Pedidos (Densidade)</option>
+                        <option value="ticket">Ticket Médio por Cliente</option>
+                    </select>
+                </div>
+
+                <!-- Busca Rápida -->
+                <div>
+                    <label for="filtro-busca" class="block text-xs font-bold text-slate-700 mb-1.5">Buscar Cliente, Telefone ou Rua</label>
+                    <div class="relative">
+                        <input type="text" id="filtro-busca" oninput="aplicarFiltros()" placeholder="Ex: Rafael, 5199..., Pitoresca" class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-orange-500">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Segmento CRM (RFM) -->
+                <div>
+                    <label for="filtro-segmento" class="block text-xs font-bold text-slate-700 mb-1.5">Segmento CRM (RFM)</label>
+                    <select id="filtro-segmento" onchange="aplicarFiltros()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                        <option value="todos">Todos os Segmentos</option>
+                        <option value="VIP">VIP (Alta frequência / gasto)</option>
+                        <option value="Recorrente">Recorrente (2+ pedidos recentes)</option>
+                        <option value="Novo">Novo (1º pedido recente)</option>
+                        <option value="Em Risco">Em Risco / Sumido (+30 dias sem pedir)</option>
+                    </select>
+                </div>
+
+                <!-- Loja e Status (Grid 2 colunas) -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label for="filtro-loja" class="block text-xs font-bold text-slate-700 mb-1.5">Loja</label>
+                        <select id="filtro-loja" onchange="aplicarFiltros()" class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                            <option value="todas">Todas as Lojas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filtro-status" class="block text-xs font-bold text-slate-700 mb-1.5">Status Pedido</label>
+                        <select id="filtro-status" onchange="aplicarFiltros()" class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                            <option value="todos">Todos Status</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Forma de Pagamento e Cupom (Grid 2 colunas) -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label for="filtro-pagamento" class="block text-xs font-bold text-slate-700 mb-1.5">Pagamento</label>
+                        <select id="filtro-pagamento" onchange="aplicarFiltros()" class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filtro-cupom" class="block text-xs font-bold text-slate-700 mb-1.5">Uso de Cupom</label>
+                        <select id="filtro-cupom" onchange="aplicarFiltros()" class="w-full px-2.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                            <option value="todos">Todos</option>
+                            <option value="com">Com Cupom</option>
+                            <option value="sem">Sem Cupom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Produto / Item -->
+                <div>
+                    <label for="filtro-produto" class="block text-xs font-bold text-slate-700 mb-1.5">Produto / Item Pedido</label>
+                    <select id="filtro-produto" onchange="aplicarFiltros()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                        <option value="todos">Todos os Produtos</option>
+                    </select>
+                </div>
+
+                <!-- Período -->
+                <div>
+                    <label for="filtro-periodo" class="block text-xs font-bold text-slate-700 mb-1.5">Período (Data Criação)</label>
+                    <select id="filtro-periodo" onchange="onChangePeriodo()" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-orange-500">
+                        <option value="todos">Todo o Histórico</option>
+                        <option value="hoje">Hoje</option>
+                        <option value="7d">Últimos 7 dias</option>
+                        <option value="30d">Últimos 30 dias</option>
+                        <option value="custom">Intervalo Personalizado</option>
+                    </select>
+                    <div id="custom-date-box" class="hidden grid-cols-2 gap-2 mt-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400">De</span>
+                            <input type="date" id="filtro-data-inicio" onchange="aplicarFiltros()" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400">Até</span>
+                            <input type="date" id="filtro-data-fim" onchange="aplicarFiltros()" class="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faixa de Valor (totalPedido) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Faixa de Valor do Pedido (R$)</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="filtro-valor-min" oninput="aplicarFiltros()" placeholder="Mín (ex: 20)" min="0" step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                        <input type="number" id="filtro-valor-max" oninput="aplicarFiltros()" placeholder="Máx (ex: 200)" min="0" step="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                    </div>
+                </div>
+
+                <!-- Botão Mobile para Dados Exemplo -->
+                <div class="pt-2 border-t border-slate-100 sm:hidden">
+                    <button onclick="carregarDadosExemplo()" class="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700">
+                        Carregar Dados de Exemplo
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTEÚDO ABA 2: LISTA DE CLIENTES CRM -->
+            <div id="panel-clientes" class="hidden flex-1 overflow-y-auto custom-scroll p-3 space-y-2.5 bg-slate-50/50">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-[11px] font-bold text-slate-500">Clientes na seleção atual</span>
+                    <button onclick="exportarCSVClientes()" class="text-[11px] font-bold text-emerald-600 hover:underline">Exportar CSV</button>
+                </div>
+                <div id="lista-clientes-crm" class="space-y-2.5">
+                    <!-- Renderizado via JS -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA PRINCIPAL DO MAPA -->
+        <main class="flex-1 relative h-full w-full">
+            <div id="map"></div>
+
+            <!-- Banner / Barra de Progresso da Geocodificação -->
+            <div id="geocode-banner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-slate-900/95 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 max-w-[92vw]">
+                <div class="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin shrink-0"></div>
+                <div class="text-xs">
+                    <span id="geocode-text" class="font-semibold">Geocodificando endereços...</span>
+                    <span id="geocode-sub" class="text-[10px] text-slate-300 block">Respeitando limite de 1 consulta/seg (cache ativo)</span>
+                </div>
+            </div>
+
+            <!-- Alerta de Erro / Modo Fallback -->
+            <div id="alert-banner" class="hidden absolute top-3 right-3 z-20 bg-amber-50 border border-amber-300 text-amber-900 px-3.5 py-2.5 rounded-2xl shadow-lg max-w-xs text-xs">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <strong class="font-bold block">Aviso de Conexão</strong>
+                        <span id="alert-msg" class="text-[11px] text-amber-800"></span>
+                    </div>
+                    <button onclick="document.getElementById('alert-banner').classList.add('hidden')" class="text-amber-700 font-bold text-sm leading-none">&times;</button>
+                </div>
+            </div>
+
+            <!-- Controles Flutuantes no Canto Inferior Esquerdo (Legenda do Calor) -->
+            <div class="absolute bottom-5 left-3 z-20 bg-white/95 backdrop-blur-md p-3 rounded-2xl shadow-lg border border-slate-200/90 max-w-[230px]">
+                <div class="flex items-center justify-between gap-3 mb-1.5">
+                    <span class="text-[11px] font-extrabold text-slate-800">Mapa de Calor</span>
+                    <button onclick="centralizarNoMapa()" class="text-[10px] font-bold text-orange-600 hover:underline">Enquadrar tudo</button>
+                </div>
+                <div class="h-2.5 w-full rounded-full bg-gradient-to-r from-blue-500 via-emerald-400 via-yellow-400 to-red-600"></div>
+                <div class="flex justify-between text-[10px] font-semibold text-slate-500 mt-1">
+                    <span>Área Fria</span>
+                    <span>Média</span>
+                    <span>Área Quente</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL DE DETALHES DO CLIENTE (CRM + WHATSAPP) -->
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-modal flex flex-col max-h-[90vh]">
+            <!-- Cabeçalho Modal -->
+            <div class="p-5 bg-slate-900 text-white flex items-start justify-between gap-3">
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 id="modal-cli-nome" class="text-lg font-extrabold tracking-tight">Nome do Cliente</h2>
+                        <span id="modal-cli-segmento" class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-900">VIP</span>
+                    </div>
+                    <p id="modal-cli-tel" class="text-xs text-slate-300 mt-0.5 font-medium">Telefone</p>
+                    <p id="modal-cli-end" class="text-xs text-slate-400 mt-1">Endereço</p>
+                </div>
+                <button onclick="fecharModalCliente()" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-lg font-bold transition">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Métricas do Cliente -->
+            <div class="grid grid-cols-3 gap-2 p-4 bg-slate-50 border-b border-slate-200">
+                <div class="bg-white p-3 rounded-2xl border border-slate-200/80 text-center">
+                    <span class="text-[10px] font-bold uppercase text-slate-400 block">Total Gasto</span>
+                    <span id="modal-cli-total" class="text-sm font-extrabold text-emerald-600">R$ 0,00</span>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200/80 text-center">
+                    <span class="text-[10px] font-bold uppercase text-slate-400 block">Pedidos</span>
+                    <span id="modal-cli-qtd" class="text-sm font-extrabold text-slate-900">0</span>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200/80 text-center">
+                    <span class="text-[10px] font-bold uppercase text-slate-400 block">Ticket Médio</span>
+                    <span id="modal-cli-ticket" class="text-sm font-extrabold text-blue-600">R$ 0,00</span>
+                </div>
+            </div>
+
+            <!-- Preferências e Histórico -->
+            <div class="p-5 overflow-y-auto custom-scroll space-y-4 flex-1">
+                <div class="flex flex-wrap gap-2 text-xs">
+                    <span class="px-3 py-1.5 rounded-xl bg-orange-50 text-orange-800 border border-orange-200 font-semibold">
+                        Favorito: <strong id="modal-cli-fav">-</strong>
+                    </span>
+                    <span class="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold">
+                        Pagto usual: <strong id="modal-cli-pagto">-</strong>
+                    </span>
+                    <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 font-semibold">
+                        Último pedido: <strong id="modal-cli-ultimo">-</strong>
+                    </span>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">Histórico de Pedidos</h4>
+                    <div id="modal-cli-historico" class="space-y-2">
+                        <!-- Lista de pedidos do cliente -->
+                    </div>
+                </div>
+
+                <!-- Mensagem WhatsApp Editável -->
+                <div>
+                    <label for="modal-wpp-msg" class="block text-xs font-bold text-slate-700 mb-1">Mensagem de Ação CRM (WhatsApp)</label>
+                    <textarea id="modal-wpp-msg" rows="3" class="w-full p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-500"></textarea>
+                </div>
+            </div>
+
+            <!-- Rodapé Ações Modal -->
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button onclick="copiarTelefoneModal()" class="px-4 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition">
+                    Copiar Telefone
+                </button>
+                <a id="modal-btn-wpp" href="#" target="_blank" rel="noopener noreferrer" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold text-center shadow-md transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/>
+                    </svg>
+                    <span>Chamar no WhatsApp</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICAÇÃO DISCRETO -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-xl border border-slate-700"></div>
+
+    <script>
+        // =========================================================================
+        // CONFIGURAÇÕES E ESTADO GLOBAL
+        // =========================================================================
+        const WEBHOOK_URL = 'https://n8n.hollybrasil.com.br/webhook/a636a358-b568-4f49-a613-d982906c9b28';
+        const GEOCODE_CACHE_KEY = 'geocrm_address_cache_v1';
+        const DEFAULT_CENTER = [-30.0585, -51.1765]; // Porto Alegre - Partenon (base do JSON)
+        const DEFAULT_ZOOM = 13;
+
+        let map = null;
+        let heatLayer = null;
+        let markersLayer = null;
+        let modoVisualizacao = 'ambos'; // 'ambos' | 'calor' | 'pinos'
+
+        let pedidosRaw = [];          // Dados normalizados vindos do webhook
+        let pedidosFiltrados = [];    // Pedidos após aplicar filtros
+        let clientesAgrupados = [];   // Clientes RFM calculados a partir dos pedidos filtrados
+        let clienteModalAtual = null;
+
+        let geocodeCache = carregarCacheGeocode();
+        let geocodeQueueRunning = false;
+
+        // =========================================================================
+        // INICIALIZAÇÃO
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            inicializarMapa();
+            buscarDadosWebhook();
+        });
+
+        function inicializarMapa() {
+            map = L.map('map', {
+                zoomControl: false
+            }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
+            // Controle de zoom no canto superior direito
+            L.control.zoom({ position: 'topright' }).addTo(map);
+
+            // Camada de mapa limpa (CartoDB Positron para destacar o mapa de calor)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            markersLayer = L.layerGroup().addTo(map);
+
+            // Atualiza filtros se "Filtrar apenas área visível" estiver marcado
+            map.on('moveend', () => {
+                if (document.getElementById('filtro-bounds').checked) {
+                    aplicarFiltros();
+                }
+            });
+        }
+
+        // =========================================================================
+        // NORMALIZAÇÃO DE DADOS MONGODB / N8N
+        // =========================================================================
+        function parseMongoNumber(val, fallback = 0) {
+            if (val === null || val === undefined || val === '') return fallback;
+            if (typeof val === 'number') return Number.isFinite(val) ? val : fallback;
+            if (typeof val === 'string') {
+                const parsed = parseFloat(val.replace(',', '.'));
+                return Number.isFinite(parsed) ? parsed : fallback;
+            }
+            if (typeof val === 'object') {
+                if (val.$numberInt !== undefined) return parseFloat(val.$numberInt) || fallback;
+                if (val.$numberDouble !== undefined) return parseFloat(val.$numberDouble) || fallback;
+                if (val.$numberLong !== undefined) return parseFloat(val.$numberLong) || fallback;
+                if (val.$numberDecimal !== undefined) return parseFloat(val.$numberDecimal) || fallback;
+            }
+            return fallback;
+        }
+
+        function parseMongoDate(val) {
+            if (!val) return new Date();
+            if (val instanceof Date) return val;
+            if (typeof val === 'object' && val.$date) {
+                return new Date(val.$date);
+            }
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? new Date() : d;
+        }
+
+        function normalizarTelefone(tel) {
+            const digits = String(tel || '').replace(/\D/g, '');
+            if (!digits) return '';
+            // Se vier sem DDI 55 e tiver 10 ou 11 dígitos, adiciona 55
+            if (digits.length === 10 || digits.length === 11) {
+                return '55' + digits;
+            }
+            return digits;
+        }
+
+        function extrairCoordenadasDiretas(doc) {
+            // Verifica em cliente.lat/lng, cliente.location.coordinates, ou raiz
+            const c = doc.cliente || {};
+            if (typeof c.lat === 'number' && typeof c.lng === 'number') {
+                return { lat: c.lat, lng: c.lng };
+            }
+            if (c.location && Array.isArray(c.location.coordinates) && c.location.coordinates.length >= 2) {
+                // GeoJSON usa [lng, lat]
+                return { lat: Number(c.location.coordinates[1]), lng: Number(c.location.coordinates[0]) };
+            }
+            if (typeof doc.lat === 'number' && typeof doc.lng === 'number') {
+                return { lat: doc.lat, lng: doc.lng };
+            }
+            return null;
+        }
+
+        function normalizarPedido(raw, index) {
+            const loja = raw.loja || {};
+            const lojaEnd = loja.endereco || {};
+            const cli = raw.cliente || {};
+
+            const itens = Array.isArray(raw.itens) ? raw.itens.map(item => ({
+                nome: String(item.nome || 'Item sem nome').trim(),
+                valorFinal: parseMongoNumber(item.valorFinal, 0),
+                obs: String(item.obs || '').trim(),
+                adicionais: Array.isArray(item.adicionais) ? item.adicionais.map(ad => ({
+                    nome: String(ad.nome || '').trim(),
+                    preco: parseMongoNumber(ad.preco, 0),
+                    adicionalId: ad.adicionalId || ''
+                })) : []
+            })) : [];
+
+            const totalPedido = parseMongoNumber(raw.totalPedido, 0);
+            const totalTele = parseMongoNumber(raw.totalTele, parseMongoNumber(loja.valorTele, 0));
+
+            const cidade = String(lojaEnd.cidade || 'Porto Alegre').trim();
+            const bairro = String(lojaEnd.bairro || '').trim();
+            const enderecoCliente = String(cli.endereco || '').trim();
+
+            // Chave única de endereço para cache de geocodificação
+            const enderecoCompleto = [enderecoCliente, bairro, cidade, 'RS, Brasil']
+                .filter(Boolean)
+                .join(', ');
+
+            const coordsDiretas = extrairCoordenadasDiretas(raw);
+            const cacheKey = enderecoCompleto.toLowerCase();
+            const coords = coordsDiretas || (cacheKey && geocodeCache[cacheKey] ? geocodeCache[cacheKey] : null);
+
+            return {
+                id: raw._id?.$oid || String(raw._id || raw.carrinhoId || `PED-${index}`),
+                carrinhoId: String(raw.carrinhoId || `CAR-${index}`),
+                lojaId: String(loja.lojaId || 'LOJA-PADRAO'),
+                lojaNome: String(loja.nomeEmpresa || loja.nome || loja.lojaId || 'Loja Principal').trim(),
+                lojaBairro: bairro,
+                lojaCidade: cidade,
+                clienteNome: String(cli.nome || 'Cliente Não Identificado').trim(),
+                clienteTelefoneRaw: String(cli.telefone || '').trim(),
+                clienteTelefone: normalizarTelefone(cli.telefone) || `SEM-TEL-${index}`,
+                clienteEndereco: enderecoCliente || 'Endereço não informado',
+                enderecoCompleto,
+                cacheKey,
+                coords,
+                itens,
+                totalPedido,
+                totalTele,
+                status: String(raw.status || 'pendente').toLowerCase().trim(),
+                dataCriacao: parseMongoDate(raw.dataCriacao),
+                cupom: String(raw.cupom || '').trim(),
+                formaPagamento: String(raw.formaPagamento || 'outro').toLowerCase().trim()
+            };
+        }
+
+        // =========================================================================
+        // BUSCA NO WEBHOOK N8N + FALLBACK
+        // =========================================================================
+        async function buscarDadosWebhook() {
+            const btnIcon = document.getElementById('icon-refresh');
+            const statusEl = document.getElementById('status-conexao');
+            btnIcon.classList.add('animate-spin');
+            statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 inline-block animate-pulse"></span> Buscando pedidos no webhook...`;
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const payload = await response.json();
+
+                // Aceita array direto ou objetos encapsulados (ex: { data: [...] }, { pedidos: [...] }, ou item único)
+                let lista = [];
+                if (Array.isArray(payload)) {
+                    lista = payload;
+                } else if (payload && Array.isArray(payload.data)) {
+                    lista = payload.data;
+                } else if (payload && Array.isArray(payload.pedidos)) {
+                    lista = payload.pedidos;
+                } else if (payload && typeof payload === 'object') {
+                    lista = [payload];
+                }
+
+                if (lista.length === 0) {
+                    throw new Error('Webhook retornou lista vazia.');
+                }
+
+                pedidosRaw = lista.map((item, idx) => normalizarPedido(item, idx));
+                popularOpcoesFiltros();
+                aplicarFiltros(true);
+
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span> Webhook ativo (${pedidosRaw.length} pedido${pedidosRaw.length > 1 ? 's' : ''})`;
+                document.getElementById('alert-banner').classList.add('hidden');
+
+                // Inicia fila de geocodificação para endereços sem coordenadas em cache
+                iniciarFilaGeocodificacao();
+
+            } catch (err) {
+                console.warn('Falha ao consultar webhook:', err);
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span> Offline / Usando base local`;
+                mostrarAlerta(`Não foi possível ler o webhook (${err.message}). Carregando base de demonstração com seu modelo de JSON.`);
+                carregarDadosExemplo(true);
+            } finally {
+                btnIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function carregarDadosExemplo(silencioso = false) {
+            // Base realista em Porto Alegre (Partenon e arredores) usando exatamente a estrutura enviada pelo usuário
+            const agora = new Date();
+            const diasAtras = (d) => new Date(agora.getTime() - d * 86400000).toISOString();
+
+            const mockLista = [
+                {
+                    _id: '6b033327f6b0a1b11a91e0f3',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { rua: 'pitoresca', numero: 341, bairro: 'partenon', complemento: 'casa 03' }, valorTele: 0 },
+                    itens: [{ nome: 'xis salada', valorFinal: 78, adicionais: [{ nome: '444', preco: 44, adicionalId: 'AD-473403-ZQ02' }], obs: 'ghjghj' }],
+                    cliente: { nome: 'Rafael', telefone: '51992828595', endereco: 'Rua Pitoresca, 341, casa 03', lat: -30.0628, lng: -51.1742 },
+                    totalPedido: 78, totalTele: null, status: 'entregue', carrinhoId: 'CAR-815767-XWN2', dataCriacao: diasAtras(2), cupom: '', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f4',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { rua: 'pitoresca', numero: 341, bairro: 'partenon' }, valorTele: 0 },
+                    itens: [{ nome: 'xis salada', valorFinal: 42 }, { nome: 'Coca-Cola 2L', valorFinal: 14 }],
+                    cliente: { nome: 'Rafael', telefone: '51992828595', endereco: 'Rua Pitoresca, 341, casa 03', lat: -30.0628, lng: -51.1742 },
+                    totalPedido: 56, totalTele: 0, status: 'entregue', carrinhoId: 'CAR-815768-AAA1', dataCriacao: diasAtras(9), cupom: 'VIP10', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f5',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { rua: 'pitoresca', numero: 341, bairro: 'partenon' }, valorTele: 5 },
+                    itens: [{ nome: 'Combo Xis Bacon + Fritas', valorFinal: 65 }],
+                    cliente: { nome: 'Rafael', telefone: '51992828595', endereco: 'Rua Pitoresca, 341, casa 03', lat: -30.0628, lng: -51.1742 },
+                    totalPedido: 70, totalTele: 5, status: 'entregue', carrinhoId: 'CAR-815769-BBB2', dataCriacao: diasAtras(18), cupom: '', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f6',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Partenon', cidade: 'Porto Alegre' }, valorTele: 0 },
+                    itens: [{ nome: 'Bauru de Filé', valorFinal: 58 }],
+                    cliente: { nome: 'Mariana Costa', telefone: '51998112233', endereco: 'Av. Bento Gonçalves, 2450, Partenon', lat: -30.0605, lng: -51.1795 },
+                    totalPedido: 58, totalTele: 0, status: 'entregue', carrinhoId: 'CAR-815770-CCC3', dataCriacao: diasAtras(1), cupom: 'BEMVINDO', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f7',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Partenon', cidade: 'Porto Alegre' }, valorTele: 0 },
+                    itens: [{ nome: 'Bauru de Filé', valorFinal: 62 }],
+                    cliente: { nome: 'Mariana Costa', telefone: '51998112233', endereco: 'Av. Bento Gonçalves, 2450, Partenon', lat: -30.0605, lng: -51.1795 },
+                    totalPedido: 62, totalTele: 0, status: 'entregue', carrinhoId: 'CAR-815771-DDD4', dataCriacao: diasAtras(6), cupom: '', formaPagamento: 'cartao'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f8',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Partenon', cidade: 'Porto Alegre' }, valorTele: 6 },
+                    itens: [{ nome: 'Torrada Americana', valorFinal: 32 }],
+                    cliente: { nome: 'Carlos Eduardo', telefone: '51997445566', endereco: 'Rua São Guilherme, 180, Partenon', lat: -30.0562, lng: -51.1710 },
+                    totalPedido: 38, totalTele: 6, status: 'entregue', carrinhoId: 'CAR-815772-EEE5', dataCriacao: diasAtras(42), cupom: '', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e0f9',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Partenon', cidade: 'Porto Alegre' }, valorTele: 6 },
+                    itens: [{ nome: 'xis salada', valorFinal: 44 }],
+                    cliente: { nome: 'Carlos Eduardo', telefone: '51997445566', endereco: 'Rua São Guilherme, 180, Partenon', lat: -30.0562, lng: -51.1710 },
+                    totalPedido: 50, totalTele: 6, status: 'entregue', carrinhoId: 'CAR-815773-FFF6', dataCriacao: diasAtras(55), cupom: '', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e100',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Santana', cidade: 'Porto Alegre' }, valorTele: 8 },
+                    itens: [{ nome: 'Combo Família 3 Xis', valorFinal: 135 }],
+                    cliente: { nome: 'Fernanda Oliveira', telefone: '51996334455', endereco: 'Rua Vicente da Fontoura, 1120, Santana', lat: -30.0510, lng: -51.1980 },
+                    totalPedido: 143, totalTele: 8, status: 'entregue', carrinhoId: 'CAR-815774-GGG7', dataCriacao: diasAtras(0), cupom: 'FAMILIA15', formaPagamento: 'pix'
+                },
+                {
+                    _id: '6b033327f6b0a1b11a91e101',
+                    loja: { lojaId: 'LOJA-929311-B1OT', nome: 'Rafael Danda', nomeEmpresa: 'Padaria & Lanches ERT', endereco: { bairro: 'Partenon', cidade: 'Porto Alegre' }, valorTele: 0 },
+                    itens: [{ nome: 'Pastel Assado + Café', valorFinal: 24 }],
+                    cliente: { nome: 'Juliana Mendes', telefone: '51995221100', endereco: 'Rua Barão do Amazonas, 910, Partenon', lat: -30.0645, lng: -51.1830 },
+                    totalPedido: 24, totalTele: 0, status: 'cancelado', carrinhoId: 'CAR-815775-HHH8', dataCriacao: diasAtras(3), cupom: '', formaPagamento: 'cartao'
+                }
+            ];
+
+            pedidosRaw = mockLista.map((item, idx) => normalizarPedido(item, idx));
+            popularOpcoesFiltros();
+            aplicarFiltros(true);
+
+            if (!silencioso) {
+                document.getElementById('status-conexao').innerHTML = `<span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span> Modo Exemplo (${pedidosRaw.length} pedidos)`;
+                mostrarToast('Dados de demonstração carregados!');
+            }
+        }
+
+        // =========================================================================
+        // GEOCODIFICAÇÃO COM CACHE LOCALSTORAGE E FILA RESPEITANDO RATE-LIMIT
+        // =========================================================================
+        function carregarCacheGeocode() {
+            try {
+                return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY) || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function salvarCacheGeocode() {
+            try {
+                localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(geocodeCache));
+            } catch (e) {
+                console.warn('Cache de geocode cheio:', e);
+            }
+        }
+
+        // Gera deslocamento determinístico pequeno perto da loja se o Nominatim não achar um endereço fictício
+        function gerarFallbackDeterministico(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            const latOffset = ((hash % 1000) / 1000) * 0.014; // ~1.5km raio
+            const lngOffset = (((hash >> 8) % 1000) / 1000) * 0.014;
+            return {
+                lat: DEFAULT_CENTER[0] + latOffset,
+                lng: DEFAULT_CENTER[1] + lngOffset,
+                aproximado: true
+            };
+        }
+
+        async function iniciarFilaGeocodificacao() {
+            if (geocodeQueueRunning) return;
+
+            // Coleta endereços únicos que ainda não possuem coordenadas
+            const pendentesMap = new Map();
+            pedidosRaw.forEach(p => {
+                if (!p.coords && p.cacheKey) {
+                    if (geocodeCache[p.cacheKey]) {
+                        p.coords = geocodeCache[p.cacheKey];
+                    } else if (!pendentesMap.has(p.cacheKey)) {
+                        pendentesMap.set(p.cacheKey, p.enderecoCompleto);
+                    }
+                }
+            });
+
+            const pendentes = Array.from(pendentesMap.entries());
+            if (pendentes.length === 0) {
+                aplicarFiltros(true);
+                return;
+            }
+
+            geocodeQueueRunning = true;
+            const banner = document.getElementById('geocode-banner');
+            const textEl = document.getElementById('geocode-text');
+            banner.classList.remove('hidden');
+
+            for (let i = 0; i < pendentes.length; i++) {
+                const [key, query] = pendentes[i];
+                textEl.textContent = `Geocodificando endereço ${i + 1} de ${pendentes.length}...`;
+
+                try {
+                    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+                    const res = await fetch(url, {
+                        headers: { 'Accept-Language': 'pt-BR' }
+                    });
+                    const data = await res.json();
+
+                    if (Array.isArray(data) && data.length > 0) {
+                        geocodeCache[key] = {
+                            lat: parseFloat(data[0].lat),
+                            lng: parseFloat(data[0].lon),
+                            aproximado: false
+                        };
+                    } else {
+                        geocodeCache[key] = gerarFallbackDeterministico(key);
+                    }
+                } catch {
+                    geocodeCache[key] = gerarFallbackDeterministico(key);
+                }
+
+                salvarCacheGeocode();
+
+                // Atualiza os pedidos que usam essa chave
+                pedidosRaw.forEach(p => {
+                    if (p.cacheKey === key) {
+                        p.coords = geocodeCache[key];
+                    }
+                });
+
+                aplicarFiltros(i === 0);
+
+                // Aguarda 1.1s para respeitar política de uso do Nominatim
+                if (i < pendentes.length - 1) {
+                    await new Promise(r => setTimeout(r, 1100));
+                }
+            }
+
+            banner.classList.add('hidden');
+            geocodeQueueRunning = false;
+            centralizarNoMapa();
+        }
+
+        // =========================================================================
+        // POPULAR SELECTS DINÂMICOS COM BASE NOS DADOS RECEBIDOS
+        // =========================================================================
+        function popularOpcoesFiltros() {
+            const lojas = new Map();
+            const statuses = new Set();
+            const pagamentos = new Set();
+            const produtos = new Set();
+
+            pedidosRaw.forEach(p => {
+                lojas.set(p.lojaId, p.lojaNome);
+                if (p.status) statuses.add(p.status);
+                if (p.formaPagamento) pagamentos.add(p.formaPagamento);
+                p.itens.forEach(it => {
+                    if (it.nome) produtos.add(it.nome);
+                });
+            });
+
+            preencherSelect('filtro-loja', Array.from(lojas.entries()).map(([v, l]) => ({ value: v, label: l })), 'todas', 'Todas as Lojas');
+            preencherSelect('filtro-status', Array.from(statuses).map(s => ({ value: s, label: s.toUpperCase() })), 'todos', 'Todos Status');
+            preencherSelect('filtro-pagamento', Array.from(pagamentos).map(pg => ({ value: pg, label: pg.toUpperCase() })), 'todos', 'Todos');
+            preencherSelect('filtro-produto', Array.from(produtos).sort().map(pr => ({ value: pr, label: pr })), 'todos', 'Todos os Produtos');
+        }
+
+        function preencherSelect(id, opcoes, defaultVal, defaultLabel) {
+            const el = document.getElementById(id);
+            const valorAnterior = el.value;
+            el.innerHTML = `<option value="${defaultVal}">${defaultLabel}</option>` +
+                opcoes.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('');
+            if (Array.from(el.options).some(o => o.value === valorAnterior)) {
+                el.value = valorAnterior;
+            }
+        }
+
+        // =========================================================================
+        // FILTRAGEM, SEGMENTAÇÃO RFM E CÁLCULO DE KPIS
+        // =========================================================================
+        function onChangePeriodo() {
+            const val = document.getElementById('filtro-periodo').value;
+            const box = document.getElementById('custom-date-box');
+            if (val === 'custom') {
+                box.classList.remove('hidden');
+                box.classList.add('grid');
+            } else {
+                box.classList.add('hidden');
+                box.classList.remove('grid');
+            }
+            aplicarFiltros();
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtro-bounds').checked = false;
+            document.getElementById('filtro-metrica').value = 'faturamento';
+            document.getElementById('filtro-busca').value = '';
+            document.getElementById('filtro-segmento').value = 'todos';
+            document.getElementById('filtro-loja').value = 'todas';
+            document.getElementById('filtro-status').value = 'todos';
+            document.getElementById('filtro-pagamento').value = 'todos';
+            document.getElementById('filtro-cupom').value = 'todos';
+            document.getElementById('filtro-produto').value = 'todos';
+            document.getElementById('filtro-periodo').value = 'todos';
+            document.getElementById('filtro-data-inicio').value = '';
+            document.getElementById('filtro-data-fim').value = '';
+            document.getElementById('filtro-valor-min').value = '';
+            document.getElementById('filtro-valor-max').value = '';
+            onChangePeriodo();
+            aplicarFiltros(true);
+        }
+
+        function calcularSegmentoRFM(cliente) {
+            const agora = new Date();
+            const diasSemComprar = Math.floor((agora - cliente.ultimoPedidoEm) / 86400000);
+
+            if (diasSemComprar > 30) {
+                return 'Em Risco';
+            }
+            if (cliente.totalPedidos >= 3 || cliente.valorTotalGasto >= 150) {
+                return 'VIP';
+            }
+            if (cliente.totalPedidos >= 2) {
+                return 'Recorrente';
+            }
+            return 'Novo';
+        }
+
+        function aplicarFiltros(enquadrar = false) {
+            const busca = document.getElementById('filtro-busca').value.toLowerCase().trim();
+            const segmentoFiltro = document.getElementById('filtro-segmento').value;
+            const lojaFiltro = document.getElementById('filtro-loja').value;
+            const statusFiltro = document.getElementById('filtro-status').value;
+            const pagtoFiltro = document.getElementById('filtro-pagamento').value;
+            const cupomFiltro = document.getElementById('filtro-cupom').value;
+            const produtoFiltro = document.getElementById('filtro-produto').value;
+            const periodoFiltro = document.getElementById('filtro-periodo').value;
+            const dataInicio = document.getElementById('filtro-data-inicio').value;
+            const dataFim = document.getElementById('filtro-data-fim').value;
+            const valorMin = parseFloat(document.getElementById('filtro-valor-min').value);
+            const valorMax = parseFloat(document.getElementById('filtro-valor-max').value);
+            const filtrarBounds = document.getElementById('filtro-bounds').checked;
+            const bounds = (filtrarBounds && map) ? map.getBounds() : null;
+
+            const agora = new Date();
+            const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+
+            // 1. Filtra os pedidos
+            const pedidosPreSegmento = pedidosRaw.filter(p => {
+                if (lojaFiltro !== 'todas' && p.lojaId !== lojaFiltro) return false;
+                if (statusFiltro !== 'todos' && p.status !== statusFiltro) return false;
+                if (pagtoFiltro !== 'todos' && p.formaPagamento !== pagtoFiltro) return false;
+
+                if (cupomFiltro === 'com' && !p.cupom) return false;
+                if (cupomFiltro === 'sem' && p.cupom) return false;
+
+                if (produtoFiltro !== 'todos') {
+                    const temProduto = p.itens.some(it => it.nome === produtoFiltro);
+                    if (!temProduto) return false;
+                }
+
+                if (!isNaN(valorMin) && p.totalPedido < valorMin) return false;
+                if (!isNaN(valorMax) && p.totalPedido > valorMax) return false;
+
+                if (periodoFiltro !== 'todos') {
+                    const diffDias = (agora - p.dataCriacao) / 86400000;
+                    if (periodoFiltro === 'hoje' && p.dataCriacao < inicioHoje) return false;
+                    if (periodoFiltro === '7d' && diffDias > 7) return false;
+                    if (periodoFiltro === '30d' && diffDias > 30) return false;
+                    if (periodoFiltro === 'custom') {
+                        if (dataInicio) {
+                            const dIni = new Date(dataInicio + 'T00:00:00');
+                            if (p.dataCriacao < dIni) return false;
+                        }
+                        if (dataFim) {
+                            const dFim = new Date(dataFim + 'T23:59:59');
+                            if (p.dataCriacao > dFim) return false;
+                        }
+                    }
+                }
+
+                if (busca) {
+                    const alvo = `${p.clienteNome} ${p.clienteTelefoneRaw} ${p.clienteEndereco} ${p.carrinhoId}`.toLowerCase();
+                    if (!alvo.includes(busca)) return false;
+                }
+
+                if (bounds && p.coords) {
+                    if (!bounds.contains([p.coords.lat, p.coords.lng])) return false;
+                }
+
+                return true;
+            });
+
+            // 2. Agrupa por cliente (lojaId + clienteTelefone) para gerar CRM RFM
+            const mapaClientes = new Map();
+
+            pedidosPreSegmento.forEach(p => {
+                const chaveCliente = `${p.lojaId}::${p.clienteTelefone}`;
+                if (!mapaClientes.has(chaveCliente)) {
+                    mapaClientes.set(chaveCliente, {
+                        chave: chaveCliente,
+                        lojaId: p.lojaId,
+                        lojaNome: p.lojaNome,
+                        nome: p.clienteNome,
+                        telefone: p.clienteTelefone,
+                        telefoneRaw: p.clienteTelefoneRaw || p.clienteTelefone,
+                        endereco: p.clienteEndereco,
+                        coords: p.coords,
+                        totalPedidos: 0,
+                        valorTotalGasto: 0,
+                        ticketMedio: 0,
+                        ultimoPedidoEm: p.dataCriacao,
+                        itensContagem: {},
+                        pagtosContagem: {},
+                        pedidos: []
+                    });
+                }
+
+                const cli = mapaClientes.get(chaveCliente);
+                cli.pedidos.push(p);
+                if (!cli.coords && p.coords) cli.coords = p.coords;
+
+                // Atualiza nome/endereço mais recentes
+                if (p.dataCriacao >= cli.ultimoPedidoEm) {
+                    cli.ultimoPedidoEm = p.dataCriacao;
+                    if (p.clienteNome) cli.nome = p.clienteNome;
+                    if (p.clienteEndereco) cli.endereco = p.clienteEndereco;
+                }
+
+                // Considera métricas financeiras (se status != cancelado)
+                if (p.status !== 'cancelado') {
+                    cli.totalPedidos += 1;
+                    cli.valorTotalGasto += p.totalPedido;
+                }
+
+                p.itens.forEach(it => {
+                    cli.itensContagem[it.nome] = (cli.itensContagem[it.nome] || 0) + 1;
+                });
+                cli.pagtosContagem[p.formaPagamento] = (cli.pagtosContagem[p.formaPagamento] || 0) + 1;
+            });
+
+            // Finaliza cálculos por cliente e aplica filtro de segmento CRM
+            let listaClientes = Array.from(mapaClientes.values()).map(cli => {
+                cli.ticketMedio = cli.totalPedidos > 0 ? (cli.valorTotalGasto / cli.totalPedidos) : 0;
+                cli.segmento = calcularSegmentoRFM(cli);
+                cli.itemFavorito = Object.entries(cli.itensContagem).sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
+                cli.pagamentoFavorito = Object.entries(cli.pagtosContagem).sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
+                cli.pedidos.sort((a, b) => b.dataCriacao - a.dataCriacao);
+                return cli;
+            });
+
+            if (segmentoFiltro !== 'todos') {
+                listaClientes = listaClientes.filter(c => c.segmento === segmentoFiltro);
+            }
+
+            // Ordena clientes por maior faturamento
+            listaClientes.sort((a, b) => b.valorTotalGasto - a.valorTotalGasto);
+            clientesAgrupados = listaClientes;
+
+            const chavesValidas = new Set(listaClientes.map(c => c.chave));
+            pedidosFiltrados = pedidosPreSegmento.filter(p => chavesValidas.has(`${p.lojaId}::${p.clienteTelefone}`));
+
+            atualizarKPIs();
+            renderizarListaClientesCRM();
+            atualizarCamadasMapa(enquadrar);
+        }
+
+        // =========================================================================
+        // ATUALIZAÇÃO DE KPIS E LISTA LATERAL DE CRM
+        // =========================================================================
+        function atualizarKPIs() {
+            const validos = pedidosFiltrados.filter(p => p.status !== 'cancelado');
+            const qtdPedidos = validos.length;
+            const faturamento = validos.reduce((acc, p) => acc + p.totalPedido, 0);
+            const ticketMedio = qtdPedidos > 0 ? faturamento / qtdPedidos : 0;
+            const qtdClientes = clientesAgrupados.length;
+            const qtdSumidos = clientesAgrupados.filter(c => c.segmento === 'Em Risco').length;
+
+            // Desktop
+            document.getElementById('top-kpi-pedidos').textContent = qtdPedidos;
+            document.getElementById('top-kpi-faturamento').textContent = formatarMoeda(faturamento);
+            document.getElementById('top-kpi-ticket').textContent = formatarMoeda(ticketMedio);
+            document.getElementById('top-kpi-clientes').textContent = qtdClientes;
+            document.getElementById('top-kpi-sumidos').textContent = qtdSumidos;
+
+            // Mobile / Sidebar
+            document.getElementById('mob-kpi-pedidos').textContent = qtdPedidos;
+            document.getElementById('mob-kpi-faturamento').textContent = formatarMoeda(faturamento, true);
+            document.getElementById('mob-kpi-sumidos').textContent = qtdSumidos;
+            document.getElementById('badge-qtd-clientes').textContent = qtdClientes;
+        }
+
+        function getBadgeSegmentoClass(seg) {
+            switch (seg) {
+                case 'VIP': return 'bg-amber-100 text-amber-800 border-amber-300';
+                case 'Recorrente': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                case 'Em Risco': return 'bg-rose-100 text-rose-800 border-rose-300';
+                default: return 'bg-blue-100 text-blue-800 border-blue-300';
+            }
+        }
+
+        function renderizarListaClientesCRM() {
+            const container = document.getElementById('lista-clientes-crm');
+            if (clientesAgrupados.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center bg-white rounded-2xl border border-slate-200 text-xs text-slate-500">
+                        Nenhum cliente encontrado com os filtros atuais.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = clientesAgrupados.map(cli => {
+                const diasAtras = Math.floor((new Date() - cli.ultimoPedidoEm) / 86400000);
+                const textoDias = diasAtras === 0 ? 'Hoje' : `Há ${diasAtras}d`;
+
+                return `
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200/90 hover:border-orange-300 shadow-2xs transition">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <h3 class="font-bold text-xs text-slate-900 truncate">${escapeHtml(cli.nome)}</h3>
+                                    <span class="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${getBadgeSegmentoClass(cli.segmento)} shrink-0">
+                                        ${cli.segmento}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 truncate mt-0.5">${escapeHtml(cli.endereco)}</p>
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-400 shrink-0">${textoDias}</span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 my-2.5 bg-slate-50 p-2 rounded-xl text-center">
+                            <div>
+                                <span class="text-[9px] text-slate-400 block">Gasto</span>
+                                <span class="text-[11px] font-extrabold text-emerald-700">${formatarMoeda(cli.valorTotalGasto)}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] text-slate-400 block">Pedidos</span>
+                                <span class="text-[11px] font-extrabold text-slate-800">${cli.totalPedidos}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] text-slate-400 block">Favorito</span>
+                                <span class="text-[11px] font-bold text-slate-700 truncate block px-1">${escapeHtml(cli.itemFavorito)}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <button onclick="focarClienteNoMapa('${escapeHtml(cli.chave)}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition">
+                                Ver no Mapa
+                            </button>
+                            <button onclick="abrirModalCliente('${escapeHtml(cli.chave)}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold transition">
+                                Ação CRM
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // RENDERIZAÇÃO DO HEATMAP E MARCADORES NO LEAFLET
+        // =========================================================================
+        function setModoVisualizacao(modo) {
+            modoVisualizacao = modo;
+            document.querySelectorAll('.view-mode-btn').forEach(btn => {
+                if (btn.dataset.view === modo) {
+                    btn.className = 'view-mode-btn py-1.5 px-2 rounded-lg text-[11px] font-bold bg-slate-900 text-white shadow-sm transition';
+                } else {
+                    btn.className = 'view-mode-btn py-1.5 px-2 rounded-lg text-[11px] font-bold text-slate-600 hover:text-slate-900 transition';
+                }
+            });
+            atualizarCamadasMapa(false);
+        }
+
+        function atualizarCamadasMapa(enquadrar = false) {
+            if (!map) return;
+
+            const metrica = document.getElementById('filtro-metrica').value;
+
+            // Remove camadas anteriores
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+                heatLayer = null;
+            }
+            markersLayer.clearLayers();
+
+            const clientesComCoords = clientesAgrupados.filter(c => c.coords && Number.isFinite(c.coords.lat) && Number.isFinite(c.coords.lng));
+
+            if (clientesComCoords.length === 0) return;
+
+            // 1. Calcula pontos e pesos para o Heatmap
+            if (modoVisualizacao === 'ambos' || modoVisualizacao === 'calor') {
+                const valores = clientesComCoords.map(c => {
+                    if (metrica === 'quantidade') return Math.max(c.totalPedidos, 1);
+                    if (metrica === 'ticket') return Math.max(c.ticketMedio, 1);
+                    return Math.max(c.valorTotalGasto, 1);
+                });
+                const maxVal = Math.max(...valores, 1);
+
+                const heatPoints = clientesComCoords.map((c, idx) => {
+                    const intensidadeNormalizada = Math.max(0.25, valores[idx] / maxVal);
+                    return [c.coords.lat, c.coords.lng, intensidadeNormalizada];
+                });
+
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 36,
+                    blur: 24,
+                    maxZoom: 16,
+                    gradient: {
+                        0.2: '#3b82f6',
+                        0.45: '#10b981',
+                        0.7: '#facc15',
+                        0.9: '#f97316',
+                        1.0: '#dc2626'
+                    }
+                }).addTo(map);
+            }
+
+            // 2. Renderiza Marcadores Interativos por Cliente
+            if (modoVisualizacao === 'ambos' || modoVisualizacao === 'pinos') {
+                clientesComCoords.forEach(cli => {
+                    const corPin = cli.segmento === 'VIP' ? '#d97706'
+                        : cli.segmento === 'Em Risco' ? '#e11d48'
+                        : cli.segmento === 'Recorrente' ? '#059669'
+                        : '#2563eb';
+
+                    const icon = L.divIcon({
+                        className: '',
+                        html: `<div class="custom-pin" style="width:30px;height:30px;background:${corPin};">${cli.totalPedidos}</div>`,
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+
+                    const marker = L.marker([cli.coords.lat, cli.coords.lng], { icon });
+
+                    const popupHtml = `
+                        <div class="p-3.5 font-sans">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <span class="font-extrabold text-sm text-slate-900 truncate">${escapeHtml(cli.nome)}</span>
+                                <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${getBadgeSegmentoClass(cli.segmento)}">${cli.segmento}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mb-2.5">${escapeHtml(cli.endereco)}</p>
+                            <div class="grid grid-cols-2 gap-1.5 bg-slate-50 p-2 rounded-xl border border-slate-200/80 text-xs mb-2.5">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block">Total Gasto</span>
+                                    <strong class="text-emerald-700">${formatarMoeda(cli.valorTotalGasto)}</strong>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block">Favorito</span>
+                                    <strong class="text-slate-800 truncate block">${escapeHtml(cli.itemFavorito)}</strong>
+                                </div>
+                            </div>
+                            <button onclick="abrirModalCliente('${escapeHtml(cli.chave)}')" class="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+                                Abrir Ficha CRM & WhatsApp
+                            </button>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupHtml);
+                    marker.addTo(markersLayer);
+                });
+            }
+
+            if (enquadrar) {
+                centralizarNoMapa();
+            }
+        }
+
+        function centralizarNoMapa() {
+            const comCoords = clientesAgrupados.filter(c => c.coords);
+            if (comCoords.length === 0) return;
+
+            if (comCoords.length === 1) {
+                map.setView([comCoords[0].coords.lat, comCoords[0].coords.lng], 15);
+                return;
+            }
+
+            const bounds = L.latLngBounds(comCoords.map(c => [c.coords.lat, c.coords.lng]));
+            map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }
+
+        function focarClienteNoMapa(chave) {
+            const cli = clientesAgrupados.find(c => c.chave === chave);
+            if (!cli || !cli.coords) {
+                mostrarToast('Coordenadas ainda não disponíveis para este endereço.');
+                return;
+            }
+            toggleSidebar(false);
+            map.setView([cli.coords.lat, cli.coords.lng], 16, { animate: true });
+        }
+
+        // =========================================================================
+        // MODAL CRM E INTEGRAÇÃO WHATSAPP
+        // =========================================================================
+        function abrirModalCliente(chave) {
+            const cli = clientesAgrupados.find(c => c.chave === chave);
+            if (!cli) return;
+            clienteModalAtual = cli;
+
+            document.getElementById('modal-cli-nome').textContent = cli.nome;
+            const segEl = document.getElementById('modal-cli-segmento');
+            segEl.textContent = cli.segmento;
+            segEl.className = `text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${getBadgeSegmentoClass(cli.segmento)}`;
+
+            document.getElementById('modal-cli-tel').textContent = `Tel: ${cli.telefoneRaw} • Loja: ${cli.lojaNome}`;
+            document.getElementById('modal-cli-end').textContent = cli.endereco;
+
+            document.getElementById('modal-cli-total').textContent = formatarMoeda(cli.valorTotalGasto);
+            document.getElementById('modal-cli-qtd').textContent = cli.totalPedidos;
+            document.getElementById('modal-cli-ticket').textContent = formatarMoeda(cli.ticketMedio);
+
+            document.getElementById('modal-cli-fav').textContent = cli.itemFavorito;
+            document.getElementById('modal-cli-pagto').textContent = cli.pagamentoFavorito.toUpperCase();
+            document.getElementById('modal-cli-ultimo').textContent = cli.ultimoPedidoEm.toLocaleDateString('pt-BR');
+
+            // Renderiza histórico de pedidos
+            const histEl = document.getElementById('modal-cli-historico');
+            histEl.innerHTML = cli.pedidos.map(p => {
+                const resumoItens = p.itens.map(i => i.nome).join(', ');
+                const statusBadge = p.status === 'entregue'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : p.status === 'cancelado'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-100 text-amber-800';
+
+                return `
+                    <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <span class="font-bold text-slate-800">${p.dataCriacao.toLocaleDateString('pt-BR')} • ${escapeHtml(p.carrinhoId)}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${statusBadge}">${escapeHtml(p.status)}</span>
+                        </div>
+                        <p class="text-slate-600 text-[11px]">${escapeHtml(resumoItens)}</p>
+                        <div class="flex items-center justify-between mt-1.5 pt-1.5 border-t border-slate-200/60 text-[11px] font-semibold">
+                            <span class="text-slate-500">Pagto: ${escapeHtml(p.formaPagamento.toUpperCase())} ${p.cupom ? `• Cupom: ${escapeHtml(p.cupom)}` : ''}</span>
+                            <span class="font-extrabold text-slate-900">${formatarMoeda(p.totalPedido)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Gera mensagem personalizada conforme segmento
+            const primeiroNome = cli.nome.split(' ')[0];
+            let msgSugerida = `Olá ${primeiroNome}! Tudo bem? Aqui é da ${cli.lojaNome}. `;
+            if (cli.segmento === 'Em Risco') {
+                msgSugerida += `Sentimos sua falta por aqui! Preparamos uma condição especial para você pedir seu ${cli.itemFavorito} hoje com entrega grátis. Vamos aproveitar?`;
+            } else if (cli.segmento === 'VIP') {
+                msgSugerida += `Você é cliente VIP aqui na ${cli.lojaNome}! Hoje temos vantagem exclusiva no seu ${cli.itemFavorito}. Quer que eu já separe para você?`;
+            } else {
+                msgSugerida += `Passando para agradecer a preferência! Hoje estamos com novidade especial para acompanhar seu ${cli.itemFavorito}.`;
+            }
+
+            const msgBox = document.getElementById('modal-wpp-msg');
+            msgBox.value = msgSugerida;
+            atualizarLinkWhatsApp();
+            msgBox.oninput = atualizarLinkWhatsApp;
+
+            document.getElementById('modal-cliente').classList.remove('hidden');
+        }
+
+        function atualizarLinkWhatsApp() {
+            if (!clienteModalAtual) return;
+            const tel = clienteModalAtual.telefone.replace(/\D/g, '');
+            const texto = encodeURIComponent(document.getElementById('modal-wpp-msg').value);
+            document.getElementById('modal-btn-wpp').href = `https://wa.me/${tel}?text=${texto}`;
+        }
+
+        function fecharModalCliente() {
+            document.getElementById('modal-cliente').classList.add('hidden');
+        }
+
+        function copiarTelefoneModal() {
+            if (!clienteModalAtual) return;
+            const temp = document.createElement('input');
+            temp.value = clienteModalAtual.telefoneRaw;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            mostrarToast('Telefone copiado para a área de transferência!');
+        }
+
+        // =========================================================================
+        // EXPORTAÇÃO CSV E UTILITÁRIOS DE UI
+        // =========================================================================
+        function exportarCSVClientes() {
+            if (clientesAgrupados.length === 0) {
+                mostrarToast('Nenhum cliente para exportar.');
+                return;
+            }
+            const cabecalho = ['Nome', 'Telefone', 'Segmento', 'Pedidos', 'TotalGasto', 'TicketMedio', 'ItemFavorito', 'Endereco', 'UltimoPedido'];
+            const linhas = clientesAgrupados.map(c => [
+                `"${c.nome.replace(/"/g, '""')}"`,
+                `"${c.telefoneRaw}"`,
+                `"${c.segmento}"`,
+                c.totalPedidos,
+                c.valorTotalGasto.toFixed(2),
+                c.ticketMedio.toFixed(2),
+                `"${c.itemFavorito.replace(/"/g, '""')}"`,
+                `"${c.endereco.replace(/"/g, '""')}"`,
+                `"${c.ultimoPedidoEm.toISOString()}"`
+            ].join(';'));
+
+            const csv = '\uFEFF' + [cabecalho.join(';'), ...linhas].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `crm-clientes-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function toggleSidebar(forcar) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const abrir = typeof forcar === 'boolean' ? forcar : sidebar.classList.contains('-translate-x-full');
+
+            if (abrir) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        }
+
+        function alternarAbaSidebar(aba) {
+            const pFiltros = document.getElementById('panel-filtros');
+            const pClientes = document.getElementById('panel-clientes');
+            const bFiltros = document.getElementById('tab-btn-filtros');
+            const bClientes = document.getElementById('tab-btn-clientes');
+
+            if (aba === 'filtros') {
+                pFiltros.classList.remove('hidden');
+                pClientes.classList.add('hidden');
+                bFiltros.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-sm transition';
+                bClientes.className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5';
+            } else {
+                pFiltros.classList.add('hidden');
+                pClientes.classList.remove('hidden');
+                bClientes.className = 'py-2 px-3 rounded-lg text-xs font-bold bg-white text-slate-900 shadow-sm transition flex items-center justify-center gap-1.5';
+                bFiltros.className = 'py-2 px-3 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition';
+            }
+        }
+
+        function formatarMoeda(valor, compacto = false) {
+            const num = Number(valor) || 0;
+            if (compacto && num >= 1000) {
+                return `R$ ${(num / 1000).toFixed(1)}k`;
+            }
+            return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function mostrarAlerta(msg) {
+            document.getElementById('alert-msg').textContent = msg;
+            document.getElementById('alert-banner').classList.remove('hidden');
+        }
+
+        function mostrarToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('hidden');
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+    </script>
+</body>
+</html>
