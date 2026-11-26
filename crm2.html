@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GeoCRM • Áreas Quentes (Mapbox)</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Mapbox GL JS CSS & JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+
+    <style>
+        html, body {
+            font-family: 'Inter', sans-serif;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: #f9fafb;
+            color: #111827;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .custom-scroll::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 9999px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        .input-crm {
+            width: 100%;
+            padding: 10px 12px;
+            background: #f3f4f6;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            font-weight: 600;
+            font-size: 12px;
+            color: #111827;
+            outline: none;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
+        }
+        .input-crm:focus {
+            border-color: #fbbf24;
+            background: #ffffff;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background-color: #f3f4f6;
+        }
+
+        /* Popup claro no estilo do site */
+        .mapboxgl-popup-content {
+            background: #ffffff !important;
+            color: #111827 !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 16px !important;
+            padding: 12px !important;
+            box-shadow: 0 12px 28px -6px rgba(17, 24, 39, 0.18) !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+        .mapboxgl-popup-tip {
+            border-top-color: #ffffff !important;
+            border-bottom-color: #ffffff !important;
+        }
+        .mapboxgl-popup-close-button {
+            color: #6b7280 !important;
+            font-size: 16px !important;
+            padding: 4px 8px !important;
+        }
+        .mapboxgl-popup-close-button:hover {
+            color: #111827 !important;
+            background: transparent !important;
+        }
+
+        footer.crm-footer {
+            background-color: #ffffff;
+            color: #333333;
+            padding: 10px 16px;
+            font-size: 12px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(10px) scale(0.985); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-modal {
+            animation: modalIn 0.18s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-[#f9fafb] text-gray-900 h-screen w-screen flex flex-col">
+
+    <!-- CABEÇALHO SUPERIOR CLARO -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-gray-200 px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-2.5 z-30 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+            <button id="btn-toggle-sidebar" onclick="toggleSidebar()" class="lg:hidden p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200 transition active:scale-95" aria-label="Abrir ou fechar filtros">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                </svg>
+            </button>
+
+            <div class="w-9 h-9 rounded-xl bg-gray-900 flex items-center justify-center text-yellow-400 shadow-sm shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+
+            <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                    <h1 id="header-titulo-loja" class="font-black italic text-sm sm:text-base tracking-tight uppercase text-gray-900 truncate">GeoCRM • Áreas Quentes</h1>
+                    <span id="header-badge-param" class="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-yellow-400 text-gray-900 truncate max-w-[200px]"></span>
+                </div>
+                <p id="status-conexao" class="text-[11px] text-gray-500 flex items-center gap-1.5 truncate">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+                    <span>Aguardando consulta ao webhook...</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- KPIs PRINCIPAIS NO TOPO (2XL+) -->
+        <div class="hidden 2xl:flex items-center gap-2.5">
+            <div class="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                <span class="text-[10px] font-bold uppercase text-gray-500 block">Total de Pedidos</span>
+                <span id="kpi-top-pedidos" class="text-sm font-black text-gray-900">0</span>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                <span class="text-[10px] font-bold uppercase text-emerald-700 block">Faturamento</span>
+                <span id="kpi-top-faturamento" class="text-sm font-black text-emerald-800">R$ 0,00</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                <span class="text-[10px] font-bold uppercase text-amber-700 block">Ticket Médio</span>
+                <span id="kpi-top-ticket" class="text-sm font-black text-amber-900">R$ 0,00</span>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-xl">
+                <span class="text-[10px] font-bold uppercase text-gray-500 block">Clientes Únicos</span>
+                <span id="kpi-top-clientes" class="text-sm font-black text-gray-900">0</span>
+            </div>
+        </div>
+
+        <!-- BOTÃO ATUALIZAR WEBHOOK -->
+        <div class="flex items-center gap-2 shrink-0">
+            <button id="btn-atualizar" onclick="buscarDadosWebhook()" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-black uppercase bg-black hover:bg-gray-800 text-white shadow-md transition active:scale-95">
+                <svg id="icon-refresh" class="w-3.5 h-3.5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                <span>Atualizar</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ÁREA PRINCIPAL: SIDEBAR + MAPA -->
+    <div class="flex-1 flex relative overflow-hidden min-h-0">
+
+        <!-- BACKDROP MOBILE -->
+        <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-20 hidden lg:hidden"></div>
+
+        <!-- BARRA LATERAL ESQUERDA BRANCA -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-30 w-[90vw] max-w-[385px] bg-white border-r border-gray-200 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out h-full shrink-0">
+
+            <!-- SELETOR DE ABA + KPIs COMPACTOS -->
+            <div class="p-3 border-b border-gray-200 bg-white shrink-0 space-y-2.5">
+                <div class="grid grid-cols-2 sm:grid-cols-4 2xl:hidden gap-1.5">
+                    <div class="bg-gray-50 border border-gray-200 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold uppercase text-gray-500 block">Pedidos</span>
+                        <span id="kpi-side-pedidos" class="text-xs font-black text-gray-900">0</span>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold uppercase text-emerald-700 block">Faturamento</span>
+                        <span id="kpi-side-faturamento" class="text-xs font-black text-emerald-800 truncate block">R$ 0</span>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold uppercase text-amber-700 block">Ticket Méd.</span>
+                        <span id="kpi-side-ticket" class="text-xs font-black text-amber-900 truncate block">R$ 0</span>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 p-2 rounded-xl">
+                        <span class="text-[9px] font-bold uppercase text-gray-500 block">Clientes</span>
+                        <span id="kpi-side-clientes" class="text-xs font-black text-gray-900">0</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-1.5 bg-gray-100 p-1 rounded-2xl border border-gray-200/80">
+                    <button id="tab-filtros" type="button" onclick="alternarAba('filtros')" class="py-2 px-3 rounded-xl text-xs font-black uppercase bg-black text-white shadow-xs transition">
+                        Filtros & Mapa
+                    </button>
+                    <button id="tab-clientes" type="button" onclick="alternarAba('clientes')" class="py-2 px-3 rounded-xl text-xs font-bold uppercase text-gray-600 hover:text-gray-900 transition flex items-center justify-center gap-1.5">
+                        <span>Clientes & Pedidos</span>
+                        <span id="badge-contagem-lista" class="bg-yellow-400 text-gray-900 px-1.5 py-0.5 rounded-full text-[10px] font-black">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ABA 1: FILTROS LATERAIS -->
+            <div id="conteudo-filtros" class="flex-1 overflow-y-auto custom-scroll p-3.5 space-y-3.5">
+
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-black uppercase tracking-wider text-gray-500">Parâmetros e Filtros</span>
+                    <button type="button" onclick="limparFiltros()" class="text-xs font-bold text-gray-900 hover:underline">
+                        Limpar tudo
+                    </button>
+                </div>
+
+                <!-- Parâmetro ?l= / ID da Loja -->
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-2xl space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label for="input-loja-param" class="text-xs font-bold text-gray-800">Parâmetro Loja (?l= / lojaId)</label>
+                        <button type="button" onclick="aplicarParametroLojaEAtualizar()" class="text-[11px] font-black uppercase px-2.5 py-1 rounded-lg bg-yellow-400 hover:bg-yellow-300 text-gray-900 transition">
+                            Buscar ID
+                        </button>
+                    </div>
+                    <input id="input-loja-param" type="text" onkeydown="if(event.key==='Enter'){event.preventDefault();aplicarParametroLojaEAtualizar();}" placeholder="Ex: LOJA-... (vazio busca geral)" class="input-crm">
+
+                    <label for="filtro-loja-select" class="block text-[11px] font-bold text-gray-500 pt-1">Lojas nos dados carregados</label>
+                    <select id="filtro-loja-select" onchange="aplicarFiltros(true)" class="input-crm">
+                        <option value="todos">Todas as lojas no retorno</option>
+                    </select>
+                </div>
+
+                <!-- Área Visível no Mapa (Bounds) -->
+                <label class="flex items-center justify-between gap-3 p-3 rounded-2xl bg-yellow-50/80 border border-yellow-300/80 cursor-pointer">
+                    <div>
+                        <span class="text-xs font-bold text-gray-900 block">Apenas área visível no mapa</span>
+                        <span class="text-[11px] text-gray-600">Filtra pontos dentro dos limites (bounds) atuais</span>
+                    </div>
+                    <input id="filtro-bounds" type="checkbox" onchange="aplicarFiltros(false)" class="w-4 h-4 accent-black rounded cursor-pointer shrink-0">
+                </label>
+
+                <!-- Modo de Visualização & Métrica de Intensidade -->
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-2xl space-y-3">
+                    <div>
+                        <span class="block text-xs font-bold text-gray-800 mb-1.5">Modo de Visualização</span>
+                        <div class="grid grid-cols-3 gap-1 bg-gray-200/80 p-1 rounded-xl">
+                            <button type="button" data-mode="both" onclick="setModoVisualizacao('both')" class="btn-view-mode py-1.5 px-2 rounded-lg text-[11px] font-bold bg-black text-white transition">
+                                Calor + Pinos
+                            </button>
+                            <button type="button" data-mode="heatmap" onclick="setModoVisualizacao('heatmap')" class="btn-view-mode py-1.5 px-2 rounded-lg text-[11px] font-bold text-gray-700 hover:text-gray-900 transition">
+                                Só Calor
+                            </button>
+                            <button type="button" data-mode="markers" onclick="setModoVisualizacao('markers')" class="btn-view-mode py-1.5 px-2 rounded-lg text-[11px] font-bold text-gray-700 hover:text-gray-900 transition">
+                                Só Pinos
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="filtro-metrica" class="block text-xs font-bold text-gray-800 mb-1.5">Intensidade do Heatmap</label>
+                        <select id="filtro-metrica" onchange="atualizarCamadasMapa(false)" class="input-crm">
+                            <option value="faturamento">Faturamento (soma de totalPedido)</option>
+                            <option value="pedidos">Quantidade de Pedidos</option>
+                            <option value="ticket">Ticket Médio por Cliente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Busca Textual -->
+                <div>
+                    <label for="filtro-busca" class="block text-xs font-bold text-gray-800 mb-1.5">Busca por Texto</label>
+                    <div class="relative">
+                        <input id="filtro-busca" type="text" oninput="aplicarFiltros(false)" placeholder="Cliente, telefone, endereço, carrinhoId, item..." class="input-crm pl-9">
+                        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Segmentação RFM -->
+                <div>
+                    <label for="filtro-segmento" class="block text-xs font-bold text-gray-800 mb-1.5">Segmentação RFM (Pedidos Entregues)</label>
+                    <select id="filtro-segmento" onchange="aplicarFiltros(false)" class="input-crm">
+                        <option value="todos">Todos os Segmentos</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Recorrente">Recorrente</option>
+                        <option value="Novo">Novo</option>
+                        <option value="Em Risco">Em Risco / Sumido</option>
+                    </select>
+                </div>
+
+                <!-- Status e Forma de Pagamento (Dinâmicos) -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label for="filtro-status" class="block text-xs font-bold text-gray-800 mb-1.5">Status</label>
+                        <select id="filtro-status" onchange="aplicarFiltros(false)" class="input-crm">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filtro-pagamento" class="block text-xs font-bold text-gray-800 mb-1.5">Pagamento</label>
+                        <select id="filtro-pagamento" onchange="aplicarFiltros(false)" class="input-crm">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Produto / Item (Dinâmico) e Cupom -->
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label for="filtro-produto" class="block text-xs font-bold text-gray-800 mb-1.5">Produto / Item</label>
+                        <select id="filtro-produto" onchange="aplicarFiltros(false)" class="input-crm">
+                            <option value="todos">Todos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filtro-cupom" class="block text-xs font-bold text-gray-800 mb-1.5">Cupom</label>
+                        <select id="filtro-cupom" onchange="aplicarFiltros(false)" class="input-crm">
+                            <option value="todos">Todos</option>
+                            <option value="com">Com cupom</option>
+                            <option value="sem">Sem cupom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Período (Data De / Data Até) -->
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-2xl space-y-2">
+                    <span class="block text-xs font-bold text-gray-800">Período (dataCriacao)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="filtro-data-de" class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data De</label>
+                            <input id="filtro-data-de" type="date" onchange="aplicarFiltros(false)" class="input-crm py-2">
+                        </div>
+                        <div>
+                            <label for="filtro-data-ate" class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Data Até</label>
+                            <input id="filtro-data-ate" type="date" onchange="aplicarFiltros(false)" class="input-crm py-2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Faixa de Valor (Mínimo / Máximo) -->
+                <div class="bg-gray-50 border border-gray-200 p-3 rounded-2xl space-y-2">
+                    <span class="block text-xs font-bold text-gray-800">Faixa de Valor (totalPedido R$)</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label for="filtro-valor-min" class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Mínimo</label>
+                            <input id="filtro-valor-min" type="number" step="0.01" min="0" oninput="aplicarFiltros(false)" placeholder="0.00" class="input-crm py-2">
+                        </div>
+                        <div>
+                            <label for="filtro-valor-max" class="block text-[10px] font-bold uppercase text-gray-500 mb-1">Máximo</label>
+                            <input id="filtro-valor-max" type="number" step="0.01" min="0" oninput="aplicarFiltros(false)" placeholder="Sem limite" class="input-crm py-2">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA 2: LISTA DE CLIENTES & PEDIDOS -->
+            <div id="conteudo-clientes" class="hidden flex-1 overflow-y-auto custom-scroll p-3 space-y-3 bg-[#f9fafb]">
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-[11px] font-black uppercase tracking-wider text-gray-500">Clientes Agrupados (RFM)</span>
+                    <button type="button" onclick="centralizarNoMapa()" class="text-[11px] font-bold text-gray-900 hover:underline">Enquadrar mapa</button>
+                </div>
+                <div id="lista-clientes" class="space-y-2.5"></div>
+
+                <div class="pt-2 border-t border-gray-200">
+                    <span class="block text-[11px] font-black uppercase tracking-wider text-gray-500 px-1 mb-2">Pedidos Filtrados</span>
+                    <div id="lista-pedidos" class="space-y-2"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ÁREA DO MAPA + RODAPÉ -->
+        <main class="flex-1 flex flex-col relative h-full w-full min-w-0">
+            <div class="flex-1 relative min-h-0 w-full">
+                <div id="map"></div>
+
+                <!-- ESTADO VAZIO / ERRO -->
+                <div id="estado-overlay" class="hidden absolute inset-0 z-20 bg-white/90 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div class="max-w-md w-full bg-white border border-gray-200 rounded-[2rem] p-6 shadow-xl text-center space-y-4">
+                        <div class="w-12 h-12 rounded-2xl bg-yellow-400/25 border border-yellow-400 text-gray-900 flex items-center justify-center mx-auto">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 id="overlay-titulo" class="text-base font-black uppercase italic text-gray-900">Atenção necessária</h2>
+                            <p id="overlay-descricao" class="text-xs text-gray-600 mt-1.5 leading-relaxed"></p>
+                        </div>
+                        <div class="flex items-center justify-center gap-2 pt-1">
+                            <button type="button" onclick="buscarDadosWebhook()" class="px-5 py-2.5 rounded-full bg-black hover:bg-gray-800 text-white text-xs font-black uppercase transition active:scale-95">
+                                Tentar novamente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BANNER DE FILA DE GEOCODIFICAÇÃO -->
+                <div id="geocode-status" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-white/95 border border-gray-200 text-gray-900 px-4 py-2 rounded-full shadow-lg flex items-center gap-2.5 max-w-[92vw]">
+                    <div class="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin shrink-0"></div>
+                    <span id="geocode-texto" class="text-xs font-bold truncate">Geocodificando endereços...</span>
+                </div>
+
+                <!-- LEGENDA DO HEATMAP -->
+                <div class="absolute bottom-4 left-3 z-20 bg-white/95 backdrop-blur-md border border-gray-200 p-3 rounded-2xl shadow-lg w-[225px]">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[11px] font-black uppercase text-gray-800">Áreas Quentes</span>
+                        <button type="button" onclick="centralizarNoMapa()" class="text-[10px] font-bold text-gray-900 hover:underline">Enquadrar</button>
+                    </div>
+                    <div class="h-2.5 w-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 via-amber-400 to-rose-600"></div>
+                    <div class="flex justify-between text-[10px] font-semibold text-gray-500 mt-1">
+                        <span>Baixa</span>
+                        <span>Média</span>
+                        <span>Alta</span>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="crm-footer shrink-0 flex flex-wrap items-center justify-between gap-2">
+                <span>GeoCRM • Mapa de Calor &amp; RFM</span>
+                <span id="footer-info-extra" class="text-gray-500">Conectado ao webhook n8n</span>
+            </footer>
+        </main>
+    </div>
+
+    <!-- MODAL DE FICHA DO CLIENTE (HISTÓRICO + WHATSAPP) -->
+    <div id="modal-cliente" class="hidden fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white border border-gray-200 w-full max-w-xl rounded-[2rem] shadow-2xl overflow-hidden animate-modal flex flex-col max-h-[90vh]">
+            <div class="p-4 sm:p-5 bg-gray-900 text-white flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 id="modal-nome" class="text-base sm:text-lg font-black uppercase italic text-white truncate">-</h2>
+                        <span id="modal-segmento" class="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border">-</span>
+                    </div>
+                    <p id="modal-telefone" class="text-xs text-gray-300 mt-0.5">-</p>
+                    <p id="modal-endereco" class="text-xs text-gray-400 mt-0.5">-</p>
+                </div>
+                <button type="button" onclick="fecharModalCliente()" class="w-8 h-8 rounded-full bg-gray-800 hover:bg-gray-700 text-white flex items-center justify-center text-lg font-bold shrink-0">
+                    &times;
+                </button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 p-3.5 sm:px-5 bg-gray-50 border-b border-gray-200">
+                <div class="bg-white border border-gray-200 p-2.5 rounded-2xl text-center">
+                    <span class="text-[10px] font-bold uppercase text-gray-500 block">Gasto Entregue</span>
+                    <span id="modal-gasto" class="text-sm font-black text-emerald-700">R$ 0,00</span>
+                </div>
+                <div class="bg-white border border-gray-200 p-2.5 rounded-2xl text-center">
+                    <span class="text-[10px] font-bold uppercase text-gray-500 block">Entregues</span>
+                    <span id="modal-qtd" class="text-sm font-black text-gray-900">0</span>
+                </div>
+                <div class="bg-white border border-gray-200 p-2.5 rounded-2xl text-center">
+                    <span class="text-[10px] font-bold uppercase text-gray-500 block">Ticket Médio</span>
+                    <span id="modal-ticket" class="text-sm font-black text-amber-700">R$ 0,00</span>
+                </div>
+            </div>
+
+            <div class="p-4 sm:p-5 overflow-y-auto custom-scroll space-y-4 flex-1">
+                <div>
+                    <h3 class="text-[11px] font-black uppercase tracking-wider text-gray-500 mb-2">Histórico de Pedidos</h3>
+                    <div id="modal-historico" class="space-y-2"></div>
+                </div>
+
+                <div>
+                    <label for="modal-mensagem-wpp" class="block text-xs font-bold text-gray-800 mb-1.5">Mensagem Personalizada (WhatsApp)</label>
+                    <textarea id="modal-mensagem-wpp" rows="3" class="input-crm"></textarea>
+                </div>
+            </div>
+
+            <div class="p-3.5 sm:px-5 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-2.5">
+                <button type="button" onclick="focarChaveNoMapa(clienteSelecionado?.chave)" class="px-4 py-2.5 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-900 text-xs font-bold transition">
+                    Ver no Mapa
+                </button>
+                <a id="modal-link-wpp" href="#" target="_blank" rel="noopener noreferrer" class="flex-1 py-2.5 px-4 rounded-full bg-yellow-400 hover:bg-yellow-300 text-gray-900 text-xs font-black uppercase text-center shadow-md transition">
+                    Enviar no WhatsApp (wa.me)
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="hidden fixed bottom-12 right-5 z-50 bg-black text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl"></div>
+
+    <script>
+        // =========================================================================
+        // CONSTANTES E ESTADO GLOBAL
+        // =========================================================================
+        const WEBHOOK_URL = 'https://n8n.hollybrasil.com.br/webhook/a636a358-b568-4f49-a613-d982906c9b28';
+        const MAPBOX_TOKEN = 'pk.eyJ1IjoicmFmYWVsZGFuZGEiLCJhIjoiY21tM3V6aHQ3MDR1dTJxcHdiNnhpaHd0ayJ9.w-fjeHmzlyVes75Rg4pJuQ';
+        const STORAGE_GEO_CACHE = 'geocrm_mapbox_geocode_cache_v1';
+
+        let map = null;
+        let mapReady = false;
+        let markers = [];
+        let activePopup = null;
+        let modoVisualizacao = 'both'; // 'both' | 'heatmap' | 'markers'
+
+        let pedidosOriginais = [];
+        let pedidosFiltrados = [];
+        let clientesFiltrados = [];
+        let clienteSelecionado = null;
+        let filtroLojaInicialAplicado = false;
+
+        let geocodeCache = carregarCacheGeocode();
+        let filaGeocodeAtiva = false;
+
+        // =========================================================================
+        // INICIALIZAÇÃO E LEITURA DE PARÂMETROS DA URL (?l=, ?lojaId=)
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const lojaParam = (urlParams.get('l') || urlParams.get('lojaId') || '').trim();
+            document.getElementById('input-loja-param').value = lojaParam;
+            atualizarBadgeParametro(lojaParam);
+
+            inicializarMapbox();
+            await buscarDadosWebhook();
+        });
+
+        function obterParametroLojaAtivo() {
+            const inputVal = (document.getElementById('input-loja-param')?.value || '').trim();
+            if (inputVal) return inputVal;
+            const params = new URLSearchParams(window.location.search);
+            return (params.get('l') || params.get('lojaId') || '').trim();
+        }
+
+        function atualizarBadgeParametro(valor) {
+            const badge = document.getElementById('header-badge-param');
+            if (valor) {
+                badge.textContent = `?l=${valor}`;
+                badge.classList.remove('hidden');
+            } else {
+                badge.textContent = '';
+                badge.classList.add('hidden');
+            }
+        }
+
+        function sincronizarUrlLoja(valor) {
+            try {
+                const url = new URL(window.location.href);
+                if (valor) {
+                    url.searchParams.set('l', valor);
+                    url.searchParams.set('lojaId', valor);
+                } else {
+                    url.searchParams.delete('l');
+                    url.searchParams.delete('lojaId');
+                }
+                window.history.replaceState({}, '', url.toString());
+            } catch (_) {}
+            atualizarBadgeParametro(valor);
+        }
+
+        function aplicarParametroLojaEAtualizar() {
+            const val = (document.getElementById('input-loja-param').value || '').trim();
+            filtroLojaInicialAplicado = false;
+            sincronizarUrlLoja(val);
+            buscarDadosWebhook();
+        }
+
+        // =========================================================================
+        // MAPBOX GL JS INICIALIZAÇÃO E CAMADAS (ESTILO CLARO + HEATMAP + PINOS)
+        // =========================================================================
+        function inicializarMapbox() {
+            if (!window.mapboxgl) {
+                exibirOverlayEstado(
+                    'Mapbox GL JS não carregou',
+                    'Não foi possível inicializar a biblioteca do Mapbox GL JS. Verifique sua conexão de rede e tente novamente.'
+                );
+                return;
+            }
+
+            mapboxgl.accessToken = MAPBOX_TOKEN;
+
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [-51.1765, -30.0585],
+                zoom: 12,
+                antialias: true
+            });
+
+            map.addControl(new mapboxgl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right');
+            map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+
+            map.on('load', () => {
+                if (!map.getSource('crm-pedidos-src')) {
+                    map.addSource('crm-pedidos-src', {
+                        type: 'geojson',
+                        data: {
+                            type: 'FeatureCollection',
+                            features: []
+                        }
+                    });
+                }
+
+                if (!map.getLayer('crm-pedidos-heatmap')) {
+                    map.addLayer({
+                        id: 'crm-pedidos-heatmap',
+                        type: 'heatmap',
+                        source: 'crm-pedidos-src',
+                        maxzoom: 16,
+                        paint: {
+                            'heatmap-weight': [
+                                'interpolate',
+                                ['linear'],
+                                ['get', 'peso'],
+                                0, 0,
+                                1, 1
+                            ],
+                            'heatmap-intensity': [
+                                'interpolate',
+                                ['linear'],
+                                ['zoom'],
+                                10, 0.9,
+                                15, 2.2
+                            ],
+                            'heatmap-color': [
+                                'interpolate',
+                                ['linear'],
+                                ['heatmap-density'],
+                                0, 'rgba(33, 102, 172, 0)',
+                                0.2, 'rgb(34, 211, 238)',
+                                0.45, 'rgb(52, 211, 153)',
+                                0.7, 'rgb(250, 204, 21)',
+                                0.9, 'rgb(249, 115, 22)',
+                                1, 'rgb(225, 29, 72)'
+                            ],
+                            'heatmap-radius': [
+                                'interpolate',
+                                ['linear'],
+                                ['zoom'],
+                                10, 22,
+                                15, 42
+                            ],
+                            'heatmap-opacity': 0.82
+                        }
+                    });
+                }
+
+                mapReady = true;
+                setTimeout(() => {
+                    if (map) map.resize();
+                    atualizarCamadasMapa(pedidosFiltrados.length > 0);
+                }, 60);
+            });
+
+            map.on('moveend', () => {
+                if (document.getElementById('filtro-bounds').checked) {
+                    aplicarFiltros(false);
+                }
+            });
+        }
+
+        // =========================================================================
+        // NORMALIZAÇÃO DE DADOS MONGODB / N8N (ROBUSTA)
+        // =========================================================================
+        function tentarParseJsonString(val) {
+            if (typeof val !== 'string') return val;
+            const trimmed = val.trim();
+            if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+                try {
+                    return JSON.parse(trimmed);
+                } catch (_) {
+                    return val;
+                }
+            }
+            return val;
+        }
+
+        function limparTextoMongo(val) {
+            if (val === null || val === undefined) return '';
+            if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') return String(val);
+            if (typeof val === 'object') {
+                if (val.$oid) return String(val.$oid);
+                if (val.$date) return limparTextoMongo(val.$date);
+                if (val.$numberInt !== undefined) return String(val.$numberInt);
+                if (val.$numberLong !== undefined) return String(val.$numberLong);
+                if (val.$numberDouble !== undefined) return String(val.$numberDouble);
+                if (val.$numberDecimal !== undefined) return String(val.$numberDecimal);
+            }
+            return String(val);
+        }
+
+        function parseNumeroMongo(val, padrao = 0) {
+            if (val === null || val === undefined || val === '') return padrao;
+            if (typeof val === 'number') return Number.isFinite(val) ? val : padrao;
+            if (typeof val === 'string') {
+                const matchMongo = val.match(/^Number(?:Int|Long|Double|Decimal)\(['"]?([^'")]+)['"]?\)$/i);
+                const bruto = matchMongo ? matchMongo[1] : val;
+                const limpo = bruto.replace(/[^\d,.-]/g, '').replace(',', '.');
+                const num = parseFloat(limpo);
+                return Number.isFinite(num) ? num : padrao;
+            }
+            if (typeof val === 'object') {
+                if (val.$numberInt !== undefined) return parseNumeroMongo(val.$numberInt, padrao);
+                if (val.$numberLong !== undefined) return parseNumeroMongo(val.$numberLong, padrao);
+                if (val.$numberDouble !== undefined) return parseNumeroMongo(val.$numberDouble, padrao);
+                if (val.$numberDecimal !== undefined) return parseNumeroMongo(val.$numberDecimal, padrao);
+            }
+            return padrao;
+        }
+
+        function parseDataMongo(val) {
+            if (!val) return null;
+            if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+            if (typeof val === 'object' && val.$date) {
+                return parseDataMongo(val.$date);
+            }
+            if (typeof val === 'string') {
+                const matchIsoDate = val.match(/^ISODate\(['"]?([^'")]+)['"]?\)$/i);
+                const str = matchIsoDate ? matchIsoDate[1] : val;
+                const d = new Date(str);
+                return isNaN(d.getTime()) ? null : d;
+            }
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function extrairCoordsDiretas(doc) {
+            const c = doc.cliente || {};
+            const latCli = parseNumeroMongo(c.lat, NaN);
+            const lngCli = parseNumeroMongo(c.lng, NaN);
+            if (Number.isFinite(latCli) && Number.isFinite(lngCli)) {
+                return { lat: latCli, lng: lngCli };
+            }
+            if (c.location && Array.isArray(c.location.coordinates) && c.location.coordinates.length >= 2) {
+                const lngG = parseNumeroMongo(c.location.coordinates[0], NaN);
+                const latG = parseNumeroMongo(c.location.coordinates[1], NaN);
+                if (Number.isFinite(latG) && Number.isFinite(lngG)) {
+                    return { lat: latG, lng: lngG };
+                }
+            }
+            const latDoc = parseNumeroMongo(doc.lat, NaN);
+            const lngDoc = parseNumeroMongo(doc.lng, NaN);
+            if (Number.isFinite(latDoc) && Number.isFinite(lngDoc)) {
+                return { lat: latDoc, lng: lngDoc };
+            }
+            return null;
+        }
+
+        function extrairCoordsLoja(loja) {
+            if (!loja || typeof loja !== 'object') return null;
+            const latL = parseNumeroMongo(loja.lat, NaN);
+            const lngL = parseNumeroMongo(loja.lng, NaN);
+            if (Number.isFinite(latL) && Number.isFinite(lngL)) {
+                return { lat: latL, lng: lngL };
+            }
+            const end = loja.endereco || {};
+            const latE = parseNumeroMongo(end.lat, NaN);
+            const lngE = parseNumeroMongo(end.lng, NaN);
+            if (Number.isFinite(latE) && Number.isFinite(lngE)) {
+                return { lat: latE, lng: lngE };
+            }
+            if (end.location && Array.isArray(end.location.coordinates) && end.location.coordinates.length >= 2) {
+                const lngG = parseNumeroMongo(end.location.coordinates[0], NaN);
+                const latG = parseNumeroMongo(end.location.coordinates[1], NaN);
+                if (Number.isFinite(latG) && Number.isFinite(lngG)) {
+                    return { lat: latG, lng: lngG };
+                }
+            }
+            return null;
+        }
+
+        function normalizarPedido(rawItem, idx) {
+            const raw = (rawItem && rawItem.json && typeof rawItem.json === 'object') ? rawItem.json : (rawItem || {});
+            const loja = (raw.loja && typeof raw.loja === 'object') ? raw.loja : {};
+            const lojaEnd = (loja.endereco && typeof loja.endereco === 'object') ? loja.endereco : {};
+            const cli = (raw.cliente && typeof raw.cliente === 'object') ? raw.cliente : {};
+
+            const ruaLoja = limparTextoMongo(lojaEnd.rua).trim();
+            const numLoja = limparTextoMongo(lojaEnd.numero).trim();
+            const bairroLoja = limparTextoMongo(lojaEnd.bairro || loja.bairro).trim();
+            const compLoja = limparTextoMongo(lojaEnd.complemento).trim();
+            const cidadeLoja = limparTextoMongo(lojaEnd.cidade || loja.cidade).trim();
+
+            const enderecoCliente = limparTextoMongo(cli.endereco || raw.endereco).trim();
+            const partesBuscaGeo = [enderecoCliente, bairroLoja, cidadeLoja].filter(Boolean);
+            const chaveGeo = partesBuscaGeo.join(' | ').toLowerCase();
+
+            const coordsDiretas = extrairCoordsDiretas(raw);
+            const coords = coordsDiretas || (chaveGeo && geocodeCache[chaveGeo] ? geocodeCache[chaveGeo] : null);
+            const lojaCoords = extrairCoordsLoja(loja);
+
+            const itensBrutos = Array.isArray(raw.itens) ? raw.itens : (Array.isArray(raw.items) ? raw.items : []);
+            const itens = itensBrutos.map(item => {
+                const it = (item && typeof item === 'object') ? item : { nome: String(item || 'Item') };
+                const addsBrutos = Array.isArray(it.adicionais) ? it.adicionais : [];
+                return {
+                    nome: limparTextoMongo(it.nome || it.titulo || 'Item').trim() || 'Item',
+                    valorFinal: parseNumeroMongo(it.valorFinal ?? it.preco, 0),
+                    obs: limparTextoMongo(it.obs || it.observacao).trim(),
+                    adicionais: addsBrutos.map(ad => {
+                        const a = (ad && typeof ad === 'object') ? ad : { nome: String(ad || '') };
+                        return {
+                            nome: limparTextoMongo(a.nome).trim(),
+                            preco: parseNumeroMongo(a.preco, 0),
+                            adicionalId: limparTextoMongo(a.adicionalId).trim()
+                        };
+                    })
+                };
+            });
+
+            const lojaId = limparTextoMongo(loja.lojaId || raw.lojaId).trim() || 'LOJA-SEM-ID';
+            const lojaNome = limparTextoMongo(loja.nomeEmpresa || loja.nome || loja.lojaNome).trim() || lojaId;
+            const telefoneRaw = limparTextoMongo(cli.telefone || raw.telefone).trim();
+            const telefoneDigitos = telefoneRaw.replace(/\D/g, '');
+            const clienteNome = limparTextoMongo(cli.nome || raw.clienteNome).trim() || 'Cliente';
+            const status = limparTextoMongo(raw.status).trim().toLowerCase() || 'indefinido';
+            const formaPagamento = limparTextoMongo(raw.formaPagamento || raw.pagamento).trim().toLowerCase() || 'nao_informado';
+            const cupom = limparTextoMongo(raw.cupom).trim();
+            const carrinhoId = limparTextoMongo(raw.carrinhoId || raw.pedidoId).trim() || `CAR-${idx + 1}`;
+            const totalPedido = parseNumeroMongo(raw.totalPedido ?? raw.total, 0);
+            const totalTele = parseNumeroMongo(raw.totalTele, 0);
+            const dataCriacao = parseDataMongo(raw.dataCriacao || raw.createdAt || raw.data);
+
+            const chaveCliente = `${lojaId.toLowerCase()}::${telefoneDigitos || clienteNome.toLowerCase()}`;
+
+            return {
+                id: limparTextoMongo(raw._id).trim() || `${carrinhoId}-${idx}`,
+                loja: {
+                    lojaId,
+                    nome: limparTextoMongo(loja.nome).trim(),
+                    nomeEmpresa: limparTextoMongo(loja.nomeEmpresa).trim(),
+                    lojaNome,
+                    telefone: limparTextoMongo(loja.telefone).trim(),
+                    email: limparTextoMongo(loja.email).trim(),
+                    cnpj: limparTextoMongo(loja.cnpj).trim(),
+                    categoria: limparTextoMongo(loja.categoria).trim(),
+                    cidade: cidadeLoja,
+                    bairro: bairroLoja,
+                    valorTele: parseNumeroMongo(loja.valorTele, 0),
+                    endereco: {
+                        rua: ruaLoja,
+                        numero: numLoja,
+                        bairro: bairroLoja,
+                        complemento: compLoja,
+                        cidade: cidadeLoja
+                    }
+                },
+                lojaId,
+                lojaNome,
+                clienteNome,
+                telefoneRaw,
+                telefoneDigitos,
+                clienteEndereco: enderecoCliente,
+                chaveGeo,
+                queryGeo: partesBuscaGeo.join(', '),
+                lojaCoords,
+                coords,
+                chaveCliente,
+                itens,
+                totalPedido,
+                totalTele,
+                status,
+                carrinhoId,
+                dataCriacao,
+                cupom,
+                formaPagamento
+            };
+        }
+
+        function extrairListaDoPayload(payloadBruto, profundidade = 0) {
+            if (!payloadBruto || profundidade > 5) return [];
+            const payload = tentarParseJsonString(payloadBruto);
+
+            if (Array.isArray(payload)) {
+                return payload.flatMap(el => {
+                    const parsed = tentarParseJsonString(el);
+                    if (Array.isArray(parsed)) return extrairListaDoPayload(parsed, profundidade + 1);
+                    return parsed ? [parsed] : [];
+                });
+            }
+
+            if (typeof payload === 'object') {
+                for (const chave of ['data', 'pedidos', 'items', 'result', 'results', 'rows', 'output', 'body']) {
+                    if (payload[chave] !== undefined && payload[chave] !== null) {
+                        const sub = extrairListaDoPayload(payload[chave], profundidade + 1);
+                        if (sub.length > 0) return sub;
+                    }
+                }
+                if (payload.loja || payload.cliente || payload.itens || payload.carrinhoId || payload.totalPedido !== undefined) {
+                    return [payload];
+                }
+            }
+            return [];
+        }
+
+        // =========================================================================
+        // BUSCA NO WEBHOOK DO N8N
+        // =========================================================================
+        async function buscarDadosWebhook() {
+            const icon = document.getElementById('icon-refresh');
+            const statusEl = document.getElementById('status-conexao');
+            const lojaParam = obterParametroLojaAtivo();
+
+            icon.classList.add('animate-spin');
+            statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span><span>Consultando webhook${lojaParam ? ` (?l=${escapeHtml(lojaParam)})` : ''}...</span>`;
+
+            try {
+                const endpoint = new URL(WEBHOOK_URL);
+                if (lojaParam) {
+                    endpoint.searchParams.set('l', lojaParam);
+                    endpoint.searchParams.set('lojaId', lojaParam);
+                    endpoint.searchParams.set('action', 'read');
+                }
+
+                const resp = await fetch(endpoint.toString(), {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!resp.ok) {
+                    throw new Error(`HTTP ${resp.status} ao acessar o webhook.`);
+                }
+
+                const textoResposta = await resp.text();
+                let json = textoResposta;
+                try {
+                    json = JSON.parse(textoResposta);
+                } catch (_) {}
+
+                const lista = extrairListaDoPayload(json);
+
+                pedidosOriginais = lista.map((item, idx) => normalizarPedido(item, idx));
+                atualizarCabecalhoLoja();
+                popularFiltrosDinamicos();
+
+                if (pedidosOriginais.length === 0) {
+                    pedidosFiltrados = [];
+                    clientesFiltrados = [];
+                    atualizarKPIs();
+                    renderizarListasLaterais();
+                    limparCamadasMapa();
+                    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-gray-400 shrink-0"></span><span>Nenhum pedido retornado pelo webhook</span>`;
+                    document.getElementById('footer-info-extra').textContent = lojaParam ? `Filtro ?l=${lojaParam} sem registros` : 'Retorno vazio';
+                    exibirOverlayEstado(
+                        'Nenhum pedido encontrado',
+                        lojaParam
+                            ? `O webhook não retornou pedidos para "${lojaParam}".`
+                            : 'O webhook retornou uma lista vazia.'
+                    );
+                    return;
+                }
+
+                esconderOverlaySeDadosProntos();
+                aplicarFiltros(true);
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span><span>${pedidosOriginais.length} pedido(s) carregado(s)</span>`;
+                document.getElementById('footer-info-extra').textContent = `Última sincronização: ${new Date().toLocaleTimeString('pt-BR')}`;
+
+                iniciarFilaGeocodificacao();
+            } catch (erro) {
+                console.error('Erro no webhook:', erro);
+                pedidosOriginais = [];
+                pedidosFiltrados = [];
+                clientesFiltrados = [];
+                atualizarKPIs();
+                renderizarListasLaterais();
+                limparCamadasMapa();
+                statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span><span>Falha na conexão com webhook</span>`;
+                exibirOverlayEstado(
+                    'Erro ao carregar dados do webhook',
+                    `Não foi possível ler o webhook (${erro.message}). Verifique sua conexão ou CORS do n8n.`
+                );
+            } finally {
+                icon.classList.remove('animate-spin');
+            }
+        }
+
+        function atualizarCabecalhoLoja() {
+            const tituloEl = document.getElementById('header-titulo-loja');
+            if (pedidosOriginais.length === 0) {
+                tituloEl.textContent = 'GeoCRM • Áreas Quentes';
+                return;
+            }
+            const lojasUnicas = [...new Set(pedidosOriginais.map(p => p.lojaNome).filter(Boolean))];
+            if (lojasUnicas.length === 1) {
+                const cidade = pedidosOriginais[0].loja.cidade;
+                tituloEl.textContent = cidade ? `${lojasUnicas[0]} • ${cidade}` : lojasUnicas[0];
+            } else {
+                tituloEl.textContent = `GeoCRM • ${lojasUnicas.length} Lojas`;
+            }
+        }
+
+        // =========================================================================
+        // GEOCODIFICAÇÃO VIA MAPBOX GEOCODING API COM PROXIMITY E CACHE
+        // =========================================================================
+        function carregarCacheGeocode() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_GEO_CACHE) || '{}');
+            } catch (_) {
+                return {};
+            }
+        }
+
+        function salvarCacheGeocode() {
+            try {
+                localStorage.setItem(STORAGE_GEO_CACHE, JSON.stringify(geocodeCache));
+            } catch (_) {}
+        }
+
+        function obterPontoProximidade(pedido) {
+            if (pedido.lojaCoords) {
+                return [pedido.lojaCoords.lng, pedido.lojaCoords.lat];
+            }
+            const outroComCoords = pedidosOriginais.find(p => p.lojaId === pedido.lojaId && p.lojaCoords);
+            if (outroComCoords) {
+                return [outroComCoords.lojaCoords.lng, outroComCoords.lojaCoords.lat];
+            }
+            const pedidoComCoords = pedidosOriginais.find(p => p.coords);
+            if (pedidoComCoords) {
+                return [pedidoComCoords.coords.lng, pedidoComCoords.coords.lat];
+            }
+            return null;
+        }
+
+        async function iniciarFilaGeocodificacao() {
+            if (filaGeocodeAtiva) return;
+
+            const pendentesMap = new Map();
+            pedidosOriginais.forEach(p => {
+                if (!p.coords && p.chaveGeo) {
+                    if (geocodeCache[p.chaveGeo]) {
+                        p.coords = geocodeCache[p.chaveGeo];
+                    } else if (!pendentesMap.has(p.chaveGeo)) {
+                        pendentesMap.set(p.chaveGeo, {
+                            query: p.queryGeo,
+                            proximity: obterPontoProximidade(p)
+                        });
+                    }
+                }
+            });
+
+            const pendentes = Array.from(pendentesMap.entries());
+            if (pendentes.length === 0) {
+                aplicarFiltros(true);
+                return;
+            }
+
+            filaGeocodeAtiva = true;
+            const banner = document.getElementById('geocode-status');
+            const texto = document.getElementById('geocode-texto');
+            banner.classList.remove('hidden');
+
+            for (let i = 0; i < pendentes.length; i++) {
+                const [chave, info] = pendentes[i];
+                texto.textContent = `Geocodificando endereço ${i + 1} de ${pendentes.length} (Mapbox)...`;
+
+                try {
+                    let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(info.query)}.json?access_token=${encodeURIComponent(MAPBOX_TOKEN)}&limit=1&country=br`;
+                    if (Array.isArray(info.proximity) && info.proximity.length === 2) {
+                        url += `&proximity=${info.proximity[0]},${info.proximity[1]}`;
+                    }
+
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const center = data?.features?.[0]?.center;
+                        if (Array.isArray(center) && center.length >= 2) {
+                            const coords = { lng: Number(center[0]), lat: Number(center[1]) };
+                            geocodeCache[chave] = coords;
+                            salvarCacheGeocode();
+                            pedidosOriginais.forEach(p => {
+                                if (p.chaveGeo === chave) {
+                                    p.coords = coords;
+                                }
+                            });
+                        }
+                    }
+                } catch (_) {}
+
+                aplicarFiltros(i === 0);
+
+                if (i < pendentes.length - 1) {
+                    await new Promise(r => setTimeout(r, 180));
+                }
+            }
+
+            banner.classList.add('hidden');
+            filaGeocodeAtiva = false;
+            centralizarNoMapa();
+        }
+
+        // =========================================================================
+        // FILTROS DINÂMICOS EXTRAÍDOS DOS DADOS RECEBIDOS
+        // =========================================================================
+        function popularFiltrosDinamicos() {
+            const lojasMap = new Map();
+            const statusSet = new Set();
+            const pagtoSet = new Set();
+            const produtoSet = new Set();
+
+            pedidosOriginais.forEach(p => {
+                lojasMap.set(p.lojaId, p.lojaNome === p.lojaId ? p.lojaId : `${p.lojaNome} (${p.lojaId})`);
+                if (p.status) statusSet.add(p.status);
+                if (p.formaPagamento) pagtoSet.add(p.formaPagamento);
+                p.itens.forEach(it => {
+                    if (it.nome) produtoSet.add(it.nome);
+                });
+            });
+
+            preencherSelect('filtro-loja-select',
+                Array.from(lojasMap.entries()).map(([value, label]) => ({ value, label })),
+                'todos',
+                'Todas as lojas no retorno'
+            );
+
+            // Se veio ?l= na URL e existe correspondência nos pedidos, seleciona automaticamente na primeira carga
+            const lojaParam = obterParametroLojaAtivo().toLowerCase();
+            if (!filtroLojaInicialAplicado && lojaParam) {
+                const match = Array.from(lojasMap.keys()).find(k => k.toLowerCase() === lojaParam);
+                if (match && lojasMap.size > 1) {
+                    document.getElementById('filtro-loja-select').value = match;
+                }
+                filtroLojaInicialAplicado = true;
+            }
+
+            preencherSelect('filtro-status',
+                Array.from(statusSet).sort().map(s => ({ value: s, label: s })),
+                'todos',
+                'Todos'
+            );
+
+            preencherSelect('filtro-pagamento',
+                Array.from(pagtoSet).sort().map(pg => ({ value: pg, label: pg })),
+                'todos',
+                'Todos'
+            );
+
+            preencherSelect('filtro-produto',
+                Array.from(produtoSet).sort((a, b) => a.localeCompare(b, 'pt-BR')).map(pr => ({ value: pr, label: pr })),
+                'todos',
+                'Todos'
+            );
+        }
+
+        function preencherSelect(id, itens, valorPadrao, rotuloPadrao) {
+            const sel = document.getElementById(id);
+            const anterior = sel.value;
+            sel.innerHTML = `<option value="${escapeHtml(valorPadrao)}">${escapeHtml(rotuloPadrao)}</option>` +
+                itens.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('');
+            if (Array.from(sel.options).some(opt => opt.value === anterior)) {
+                sel.value = anterior;
+            }
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtro-loja-select').value = 'todos';
+            document.getElementById('filtro-bounds').checked = false;
+            document.getElementById('filtro-metrica').value = 'faturamento';
+            document.getElementById('filtro-busca').value = '';
+            document.getElementById('filtro-segmento').value = 'todos';
+            document.getElementById('filtro-status').value = 'todos';
+            document.getElementById('filtro-pagamento').value = 'todos';
+            document.getElementById('filtro-produto').value = 'todos';
+            document.getElementById('filtro-cupom').value = 'todos';
+            document.getElementById('filtro-data-de').value = '';
+            document.getElementById('filtro-data-ate').value = '';
+            document.getElementById('filtro-valor-min').value = '';
+            document.getElementById('filtro-valor-max').value = '';
+            setModoVisualizacao('both');
+            aplicarFiltros(true);
+        }
+
+        // =========================================================================
+        // SEGMENTAÇÃO RFM BASEADA NOS PEDIDOS ENTREGUES DO CLIENTE
+        // =========================================================================
+        function calcularSegmentoRFM(cliente) {
+            const entregues = cliente.pedidosEntregues;
+            const qtdEntregues = entregues.length;
+            const gastoEntregue = cliente.valorTotalEntregue;
+
+            const datasRef = entregues.length > 0
+                ? entregues.map(p => p.dataCriacao).filter(Boolean)
+                : cliente.pedidos.map(p => p.dataCriacao).filter(Boolean);
+
+            const ultimaData = datasRef.length > 0
+                ? new Date(Math.max(...datasRef.map(d => d.getTime())))
+                : null;
+
+            const diasDesdeUltimo = ultimaData
+                ? Math.floor((Date.now() - ultimaData.getTime()) / 86400000)
+                : 0;
+
+            if (diasDesdeUltimo > 30) {
+                return 'Em Risco';
+            }
+            if (qtdEntregues >= 3 || gastoEntregue >= 150) {
+                return 'VIP';
+            }
+            if (qtdEntregues >= 2) {
+                return 'Recorrente';
+            }
+            return 'Novo';
+        }
+
+        // =========================================================================
+        // APLICAÇÃO DOS FILTROS, AGRUPAMENTO DE CLIENTES E KPIS
+        // =========================================================================
+        function aplicarFiltros(enquadrar = false) {
+            const lojaSel = document.getElementById('filtro-loja-select').value;
+            const apenasBounds = document.getElementById('filtro-bounds').checked;
+            const busca = (document.getElementById('filtro-busca').value || '').toLowerCase().trim();
+            const segmentoSel = document.getElementById('filtro-segmento').value;
+            const statusSel = document.getElementById('filtro-status').value;
+            const pagtoSel = document.getElementById('filtro-pagamento').value;
+            const produtoSel = document.getElementById('filtro-produto').value;
+            const cupomSel = document.getElementById('filtro-cupom').value;
+            const dataDe = document.getElementById('filtro-data-de').value;
+            const dataAte = document.getElementById('filtro-data-ate').value;
+            const valorMin = parseFloat(document.getElementById('filtro-valor-min').value);
+            const valorMax = parseFloat(document.getElementById('filtro-valor-max').value);
+
+            const dtInicio = dataDe ? new Date(dataDe + 'T00:00:00') : null;
+            const dtFim = dataAte ? new Date(dataAte + 'T23:59:59.999') : null;
+            const boundsMapa = (apenasBounds && map) ? map.getBounds() : null;
+
+            const basePedidos = pedidosOriginais.filter(p => {
+                if (lojaSel !== 'todos' && p.lojaId !== lojaSel) return false;
+                if (statusSel !== 'todos' && p.status !== statusSel) return false;
+                if (pagtoSel !== 'todos' && p.formaPagamento !== pagtoSel) return false;
+
+                if (produtoSel !== 'todos') {
+                    const temItem = p.itens.some(it => it.nome === produtoSel);
+                    if (!temItem) return false;
+                }
+
+                if (cupomSel === 'com' && !p.cupom) return false;
+                if (cupomSel === 'sem' && p.cupom) return false;
+
+                if (dtInicio && (!p.dataCriacao || p.dataCriacao < dtInicio)) return false;
+                if (dtFim && (!p.dataCriacao || p.dataCriacao > dtFim)) return false;
+
+                if (!isNaN(valorMin) && p.totalPedido < valorMin) return false;
+                if (!isNaN(valorMax) && p.totalPedido > valorMax) return false;
+
+                if (busca) {
+                    const itensStr = p.itens.map(i => `${i.nome} ${i.obs} ${i.adicionais.map(a => a.nome).join(' ')}`).join(' ');
+                    const alvo = `${p.clienteNome} ${p.telefoneRaw} ${p.clienteEndereco} ${p.lojaId} ${p.lojaNome} ${p.carrinhoId} ${p.status} ${p.formaPagamento} ${p.cupom} ${itensStr}`.toLowerCase();
+                    if (!alvo.includes(busca)) return false;
+                }
+
+                if (boundsMapa) {
+                    if (!p.coords) return false;
+                    if (!boundsMapa.contains([p.coords.lng, p.coords.lat])) return false;
+                }
+
+                return true;
+            });
+
+            const mapaClientes = new Map();
+            basePedidos.forEach(p => {
+                if (!mapaClientes.has(p.chaveCliente)) {
+                    mapaClientes.set(p.chaveCliente, {
+                        chave: p.chaveCliente,
+                        lojaId: p.lojaId,
+                        lojaNome: p.lojaNome,
+                        nome: p.clienteNome,
+                        telefoneRaw: p.telefoneRaw,
+                        telefoneDigitos: p.telefoneDigitos,
+                        endereco: p.clienteEndereco,
+                        coords: p.coords,
+                        pedidos: [],
+                        pedidosEntregues: [],
+                        valorTotalEntregue: 0,
+                        ticketMedio: 0,
+                        segmento: 'Novo'
+                    });
+                }
+
+                const c = mapaClientes.get(p.chaveCliente);
+                c.pedidos.push(p);
+                if (!c.coords && p.coords) c.coords = p.coords;
+                if (p.status === 'entregue') {
+                    c.pedidosEntregues.push(p);
+                    c.valorTotalEntregue += p.totalPedido;
+                }
+            });
+
+            let listaClientes = Array.from(mapaClientes.values()).map(c => {
+                c.ticketMedio = c.pedidosEntregues.length > 0
+                    ? c.valorTotalEntregue / c.pedidosEntregues.length
+                    : 0;
+                c.segmento = calcularSegmentoRFM(c);
+                c.pedidos.sort((a, b) => (b.dataCriacao?.getTime() || 0) - (a.dataCriacao?.getTime() || 0));
+                return c;
+            });
+
+            if (segmentoSel !== 'todos') {
+                listaClientes = listaClientes.filter(c => c.segmento === segmentoSel);
+            }
+
+            listaClientes.sort((a, b) => b.valorTotalEntregue - a.valorTotalEntregue);
+            clientesFiltrados = listaClientes;
+
+            const chavesClientesValidas = new Set(clientesFiltrados.map(c => c.chave));
+            pedidosFiltrados = basePedidos.filter(p => chavesClientesValidas.has(p.chaveCliente));
+
+            atualizarKPIs();
+            renderizarListasLaterais();
+            atualizarCamadasMapa(enquadrar);
+        }
+
+        function atualizarKPIs() {
+            const totalPedidos = pedidosFiltrados.length;
+            const faturamento = pedidosFiltrados.reduce((acc, p) => acc + p.totalPedido, 0);
+            const ticketMedio = totalPedidos > 0 ? faturamento / totalPedidos : 0;
+            const clientesUnicos = clientesFiltrados.length;
+
+            const pedidosFmt = String(totalPedidos);
+            const fatFmt = formatarMoeda(faturamento);
+            const fatSideFmt = formatarMoeda(faturamento, true);
+            const ticketFmt = formatarMoeda(ticketMedio);
+            const ticketSideFmt = formatarMoeda(ticketMedio, true);
+            const cliFmt = String(clientesUnicos);
+
+            document.getElementById('kpi-top-pedidos').textContent = pedidosFmt;
+            document.getElementById('kpi-top-faturamento').textContent = fatFmt;
+            document.getElementById('kpi-top-ticket').textContent = ticketFmt;
+            document.getElementById('kpi-top-clientes').textContent = cliFmt;
+
+            document.getElementById('kpi-side-pedidos').textContent = pedidosFmt;
+            document.getElementById('kpi-side-faturamento').textContent = fatSideFmt;
+            document.getElementById('kpi-side-ticket').textContent = ticketSideFmt;
+            document.getElementById('kpi-side-clientes').textContent = cliFmt;
+
+            document.getElementById('badge-contagem-lista').textContent = cliFmt;
+        }
+
+        function estiloBadgeSegmento(seg) {
+            switch (seg) {
+                case 'VIP': return 'bg-yellow-100 text-yellow-900 border-yellow-300';
+                case 'Recorrente': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                case 'Em Risco': return 'bg-rose-100 text-rose-800 border-rose-300';
+                default: return 'bg-gray-100 text-gray-800 border-gray-300';
+            }
+        }
+
+        function renderizarListasLaterais() {
+            const contClientes = document.getElementById('lista-clientes');
+            const contPedidos = document.getElementById('lista-pedidos');
+
+            if (clientesFiltrados.length === 0) {
+                contClientes.innerHTML = `<div class="p-4 bg-white rounded-2xl border border-gray-200 text-xs text-gray-500 text-center">Nenhum cliente nos filtros atuais.</div>`;
+            } else {
+                contClientes.innerHTML = clientesFiltrados.map(c => `
+                    <div class="bg-white p-3 rounded-2xl border border-gray-200 hover:border-yellow-400 shadow-2xs transition space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-bold text-xs text-gray-900 truncate">${escapeHtml(c.nome)}</span>
+                                    <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${estiloBadgeSegmento(c.segmento)}">${escapeHtml(c.segmento)}</span>
+                                </div>
+                                <p class="text-[11px] text-gray-500 truncate mt-0.5">${escapeHtml(c.endereco || 'Endereço não informado')}</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 bg-gray-50 p-2 rounded-xl border border-gray-100 text-center">
+                            <div>
+                                <span class="text-[9px] font-semibold text-gray-500 block">Entregue</span>
+                                <span class="text-[11px] font-black text-emerald-700">${formatarMoeda(c.valorTotalEntregue)}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] font-semibold text-gray-500 block">Pedidos</span>
+                                <span class="text-[11px] font-black text-gray-900">${c.pedidos.length}</span>
+                            </div>
+                            <div>
+                                <span class="text-[9px] font-semibold text-gray-500 block">Ticket</span>
+                                <span class="text-[11px] font-black text-amber-800">${formatarMoeda(c.ticketMedio)}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="focarChaveNoMapa('${escapeHtml(c.chave)}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 text-[11px] font-bold transition">
+                                Ver no Mapa
+                            </button>
+                            <button type="button" onclick="abrirModalCliente('${escapeHtml(c.chave)}')" class="flex-1 py-1.5 px-2.5 rounded-xl bg-black hover:bg-gray-800 text-white text-[11px] font-bold transition">
+                                Ficha &amp; WhatsApp
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            if (pedidosFiltrados.length === 0) {
+                contPedidos.innerHTML = `<div class="p-3 bg-white rounded-2xl border border-gray-200 text-xs text-gray-500 text-center">Nenhum pedido encontrado.</div>`;
+            } else {
+                contPedidos.innerHTML = pedidosFiltrados.map(p => {
+                    const dataStr = p.dataCriacao ? p.dataCriacao.toLocaleDateString('pt-BR') : '-';
+                    const resumoItens = p.itens.map(i => i.nome).join(', ');
+                    return `
+                        <div class="bg-white p-3 rounded-2xl border border-gray-200 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="font-black text-gray-900 truncate">${escapeHtml(p.carrinhoId)}</span>
+                                <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">${escapeHtml(p.status)}</span>
+                            </div>
+                            <p class="text-[11px] font-semibold text-gray-700 truncate">${escapeHtml(p.clienteNome)} • ${dataStr}</p>
+                            <p class="text-[11px] text-gray-500 truncate">${escapeHtml(resumoItens || '-')}</p>
+                            <div class="flex items-center justify-between pt-1 border-t border-gray-100">
+                                <span class="text-[10px] font-bold uppercase text-gray-500">${escapeHtml(p.formaPagamento)}</span>
+                                <span class="font-black text-gray-900">${formatarMoeda(p.totalPedido)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // =========================================================================
+        // MODAL DE FICHA DO CLIENTE E WHATSAPP
+        // =========================================================================
+        function construirClienteFallback(chave) {
+            const p = pedidosOriginais.find(item => item.chaveCliente === chave);
+            if (!p) return null;
+            const doCliente = pedidosOriginais.filter(item => item.chaveCliente === chave);
+            const entregues = doCliente.filter(item => item.status === 'entregue');
+            const gasto = entregues.reduce((s, item) => s + item.totalPedido, 0);
+            const cli = {
+                chave,
+                lojaId: p.lojaId,
+                lojaNome: p.lojaNome,
+                nome: p.clienteNome,
+                telefoneRaw: p.telefoneRaw,
+                telefoneDigitos: p.telefoneDigitos,
+                endereco: p.clienteEndereco,
+                coords: p.coords,
+                pedidos: doCliente,
+                pedidosEntregues: entregues,
+                valorTotalEntregue: gasto,
+                ticketMedio: entregues.length > 0 ? gasto / entregues.length : 0,
+                segmento: 'Novo'
+            };
+            cli.segmento = calcularSegmentoRFM(cli);
+            return cli;
+        }
+
+        function abrirModalCliente(chave) {
+            const cli = clientesFiltrados.find(c => c.chave === chave) || construirClienteFallback(chave);
+            if (!cli) return;
+            clienteSelecionado = cli;
+
+            document.getElementById('modal-nome').textContent = cli.nome;
+            const segEl = document.getElementById('modal-segmento');
+            segEl.textContent = cli.segmento;
+            segEl.className = `text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${estiloBadgeSegmento(cli.segmento)}`;
+
+            document.getElementById('modal-telefone').textContent = `Telefone: ${cli.telefoneRaw || '-'} • Loja: ${cli.lojaNome}`;
+            document.getElementById('modal-endereco').textContent = `Endereço: ${cli.endereco || '-'}`;
+
+            document.getElementById('modal-gasto').textContent = formatarMoeda(cli.valorTotalEntregue);
+            document.getElementById('modal-qtd').textContent = String(cli.pedidosEntregues.length);
+            document.getElementById('modal-ticket').textContent = formatarMoeda(cli.ticketMedio);
+
+            const histEl = document.getElementById('modal-historico');
+            histEl.innerHTML = cli.pedidos.map(p => {
+                const dataTxt = p.dataCriacao ? p.dataCriacao.toLocaleDateString('pt-BR') : '-';
+                const itensTxt = p.itens.map(i => {
+                    const adds = i.adicionais.length > 0 ? ` (${i.adicionais.map(a => a.nome).join(', ')})` : '';
+                    const obs = i.obs ? ` [Obs: ${i.obs}]` : '';
+                    return `${i.nome}${adds}${obs}`;
+                }).join(' • ');
+
+                return `
+                    <div class="p-3 rounded-2xl bg-gray-50 border border-gray-200 text-xs space-y-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-bold text-gray-900">${dataTxt} • ${escapeHtml(p.carrinhoId)}</span>
+                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-gray-200 text-gray-800">${escapeHtml(p.status)}</span>
+                        </div>
+                        <p class="text-gray-600 text-[11px]">${escapeHtml(itensTxt || '-')}</p>
+                        <div class="flex items-center justify-between pt-1 border-t border-gray-200/70 text-[11px]">
+                            <span class="text-gray-500 font-semibold">${escapeHtml(p.formaPagamento)}${p.cupom ? ` • Cupom: ${escapeHtml(p.cupom)}` : ''}</span>
+                            <span class="font-black text-gray-900">${formatarMoeda(p.totalPedido)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const primeiroNome = (cli.nome || 'cliente').split(/\s+/)[0];
+            const msgPadrao = `Olá ${primeiroNome}, tudo bem? Aqui é da ${cli.lojaNome}. Passando para saber se podemos te ajudar hoje!`;
+            const textarea = document.getElementById('modal-mensagem-wpp');
+            textarea.value = msgPadrao;
+            textarea.oninput = atualizarLinkWhatsAppModal;
+            atualizarLinkWhatsAppModal();
+
+            document.getElementById('modal-cliente').classList.remove('hidden');
+        }
+
+        function atualizarLinkWhatsAppModal() {
+            const linkEl = document.getElementById('modal-link-wpp');
+            if (!clienteSelecionado) {
+                linkEl.href = '#';
+                return;
+            }
+            let digitos = (clienteSelecionado.telefoneDigitos || '').replace(/\D/g, '');
+            if (digitos.length === 10 || digitos.length === 11) {
+                digitos = `55${digitos}`;
+            }
+            const texto = encodeURIComponent(document.getElementById('modal-mensagem-wpp').value || '');
+            linkEl.href = digitos ? `https://wa.me/${digitos}?text=${texto}` : '#';
+        }
+
+        function fecharModalCliente() {
+            document.getElementById('modal-cliente').classList.add('hidden');
+        }
+
+        // =========================================================================
+        // ATUALIZAÇÃO DO HEATMAP E MARCADORES NO MAPBOX GL JS
+        // =========================================================================
+        function setModoVisualizacao(modo) {
+            modoVisualizacao = modo;
+            document.querySelectorAll('.btn-view-mode').forEach(btn => {
+                if (btn.dataset.mode === modo) {
+                    btn.className = 'btn-view-mode py-1.5 px-2 rounded-lg text-[11px] font-bold bg-black text-white transition';
+                } else {
+                    btn.className = 'btn-view-mode py-1.5 px-2 rounded-lg text-[11px] font-bold text-gray-700 hover:text-gray-900 transition';
+                }
+            });
+            atualizarCamadasMapa(false);
+        }
+
+        function limparCamadasMapa() {
+            if (activePopup) {
+                activePopup.remove();
+                activePopup = null;
+            }
+            markers.forEach(m => m.remove());
+            markers = [];
+
+            if (map && mapReady && map.getSource('crm-pedidos-src')) {
+                map.getSource('crm-pedidos-src').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+        }
+
+        function atualizarCamadasMapa(enquadrar = false) {
+            if (!map || !mapReady || !window.mapboxgl) return;
+
+            map.resize();
+            limparCamadasMapa();
+
+            const metrica = document.getElementById('filtro-metrica').value;
+            const mostrarCalor = modoVisualizacao === 'both' || modoVisualizacao === 'heatmap';
+            const mostrarPinos = modoVisualizacao === 'both' || modoVisualizacao === 'markers';
+
+            if (map.getLayer('crm-pedidos-heatmap')) {
+                map.setLayoutProperty('crm-pedidos-heatmap', 'visibility', mostrarCalor ? 'visible' : 'none');
+            }
+
+            const pontosComCoords = pedidosFiltrados.filter(
+                p => p.coords && Number.isFinite(p.coords.lat) && Number.isFinite(p.coords.lng)
+            );
+            if (pontosComCoords.length === 0) return;
+
+            const ticketPorCliente = new Map();
+            clientesFiltrados.forEach(c => ticketPorCliente.set(c.chave, c.ticketMedio));
+
+            const pesosBrutos = pontosComCoords.map(p => {
+                if (metrica === 'faturamento') return Math.max(p.totalPedido, 0);
+                if (metrica === 'ticket') return Math.max(ticketPorCliente.get(p.chaveCliente) ?? p.totalPedido, 0);
+                return 1;
+            });
+            const maxPeso = Math.max(...pesosBrutos, 1);
+
+            const features = pontosComCoords.map((p, idx) => ({
+                type: 'Feature',
+                geometry: {
+                    type: 'Point',
+                    coordinates: [p.coords.lng, p.coords.lat]
+                },
+                properties: {
+                    peso: mostrarCalor ? Math.max(0.15, pesosBrutos[idx] / maxPeso) : 0
+                }
+            }));
+
+            const src = map.getSource('crm-pedidos-src');
+            if (src) {
+                src.setData({
+                    type: 'FeatureCollection',
+                    features
+                });
+            }
+
+            if (mostrarPinos) {
+                pontosComCoords.forEach(p => {
+                    const el = document.createElement('button');
+                    el.type = 'button';
+                    el.title = `${p.clienteNome} • ${p.carrinhoId}`;
+                    el.className = 'w-5 h-5 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-125 focus:outline-none';
+                    el.style.backgroundColor = p.status === 'entregue' ? '#111827' : '#eab308';
+
+                    const itensHtml = p.itens.map(it => {
+                        const adds = it.adicionais.length > 0
+                            ? ` <span style="color:#6b7280;">(${it.adicionais.map(a => a.nome).join(', ')})</span>`
+                            : '';
+                        const obs = it.obs ? `<div style="color:#dc2626;font-size:10px;font-weight:700;margin-top:1px;">Obs: ${escapeHtml(it.obs)}</div>` : '';
+                        return `<div style="margin-bottom:3px;">• ${escapeHtml(it.nome)}${adds}${obs}</div>`;
+                    }).join('');
+
+                    const telDig = (p.telefoneDigitos || '').replace(/\D/g, '');
+                    const telWpp = telDig.length === 10 || telDig.length === 11 ? `55${telDig}` : telDig;
+                    const wppUrl = telWpp
+                        ? `https://wa.me/${telWpp}?text=${encodeURIComponent(`Olá ${p.clienteNome}, tudo bem?`)}`
+                        : '#';
+
+                    const popupHtml = `
+                        <div style="max-width:265px;line-height:1.35;font-size:12px;">
+                            <div style="font-weight:900;font-size:13px;color:#111827;margin-bottom:2px;">${escapeHtml(p.clienteNome)}</div>
+                            <div style="color:#6b7280;font-size:11px;margin-bottom:6px;">
+                                ${escapeHtml(p.telefoneRaw || 'Sem telefone')} • ${escapeHtml(p.carrinhoId)}
+                            </div>
+                            <div style="font-size:11px;color:#374151;margin-bottom:6px;">
+                                <strong style="color:#111827;">Endereço:</strong> ${escapeHtml(p.clienteEndereco || '-')}
+                            </div>
+                            <div style="font-size:11px;color:#374151;margin-bottom:6px;">
+                                <strong style="color:#111827;">Loja:</strong> ${escapeHtml(p.lojaNome)} (${escapeHtml(p.lojaId)})
+                            </div>
+                            <div style="font-size:11px;color:#374151;margin-bottom:6px;">
+                                <strong style="color:#111827;">Status:</strong> ${escapeHtml(p.status)} | <strong style="color:#111827;">Pagto:</strong> ${escapeHtml(p.formaPagamento)}
+                                ${p.cupom ? `<br><strong style="color:#b45309;">Cupom:</strong> ${escapeHtml(p.cupom)}` : ''}
+                            </div>
+                            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:7px;margin-bottom:8px;font-size:11px;color:#1f2937;">
+                                <div style="font-weight:800;color:#4b5563;margin-bottom:3px;">Itens:</div>
+                                ${itensHtml || '<div>-</div>'}
+                            </div>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                                <span style="font-weight:900;color:#047857;font-size:13px;">${escapeHtml(formatarMoeda(p.totalPedido))}</span>
+                                ${telWpp ? `<a href="${wppUrl}" target="_blank" rel="noopener noreferrer" style="background:#111827;color:#facc15;text-decoration:none;font-weight:800;font-size:11px;padding:5px 10px;border-radius:8px;">WhatsApp</a>` : ''}
+                            </div>
+                        </div>
+                    `;
+
+                    const marker = new mapboxgl.Marker({ element: el })
+                        .setLngLat([p.coords.lng, p.coords.lat])
+                        .addTo(map);
+
+                    el.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        if (activePopup) activePopup.remove();
+                        activePopup = new mapboxgl.Popup({ offset: 14, closeButton: true })
+                            .setLngLat([p.coords.lng, p.coords.lat])
+                            .setHTML(popupHtml)
+                            .addTo(map);
+                    });
+
+                    markers.push(marker);
+                });
+            }
+
+            if (enquadrar) {
+                centralizarNoMapa();
+            }
+        }
+
+        function centralizarNoMapa() {
+            if (!map || !window.mapboxgl) return;
+            map.resize();
+            const coordsList = pedidosFiltrados.filter(p => p.coords).map(p => p.coords);
+            if (coordsList.length === 0) return;
+
+            if (coordsList.length === 1) {
+                map.flyTo({
+                    center: [coordsList[0].lng, coordsList[0].lat],
+                    zoom: 15
+                });
+                return;
+            }
+
+            const bounds = new mapboxgl.LngLatBounds();
+            coordsList.forEach(pt => bounds.extend([pt.lng, pt.lat]));
+            map.fitBounds(bounds, { padding: 55, maxZoom: 15 });
+        }
+
+        function focarChaveNoMapa(chaveCliente) {
+            if (!chaveCliente || !map) return;
+            const cli = clientesFiltrados.find(c => c.chave === chaveCliente) || construirClienteFallback(chaveCliente);
+            if (!cli || !cli.coords) {
+                mostrarToast('Coordenadas ainda não disponíveis para este cliente.');
+                return;
+            }
+            fecharModalCliente();
+            toggleSidebar(false);
+            map.resize();
+            map.flyTo({
+                center: [cli.coords.lng, cli.coords.lat],
+                zoom: 16
+            });
+        }
+
+        // =========================================================================
+        // UTILITÁRIOS DE UI E OVERLAYS
+        // =========================================================================
+        function exibirOverlayEstado(titulo, descricao) {
+            document.getElementById('overlay-titulo').textContent = titulo;
+            document.getElementById('overlay-descricao').textContent = descricao;
+            document.getElementById('estado-overlay').classList.remove('hidden');
+        }
+
+        function esconderOverlaySeDadosProntos() {
+            if (pedidosOriginais.length > 0) {
+                document.getElementById('estado-overlay').classList.add('hidden');
+            }
+        }
+
+        function toggleSidebar(forcar) {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const abrir = typeof forcar === 'boolean' ? forcar : sidebar.classList.contains('-translate-x-full');
+            if (abrir) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+            setTimeout(() => {
+                if (map) map.resize();
+            }, 220);
+        }
+
+        function alternarAba(aba) {
+            const abaFiltros = document.getElementById('tab-filtros');
+            const abaClientes = document.getElementById('tab-clientes');
+            const painelFiltros = document.getElementById('conteudo-filtros');
+            const painelClientes = document.getElementById('conteudo-clientes');
+
+            if (aba === 'filtros') {
+                painelFiltros.classList.remove('hidden');
+                painelClientes.classList.add('hidden');
+                abaFiltros.className = 'py-2 px-3 rounded-xl text-xs font-black uppercase bg-black text-white shadow-xs transition';
+                abaClientes.className = 'py-2 px-3 rounded-xl text-xs font-bold uppercase text-gray-600 hover:text-gray-900 transition flex items-center justify-center gap-1.5';
+            } else {
+                painelFiltros.classList.add('hidden');
+                painelClientes.classList.remove('hidden');
+                abaClientes.className = 'py-2 px-3 rounded-xl text-xs font-black uppercase bg-black text-white shadow-xs transition flex items-center justify-center gap-1.5';
+                abaFiltros.className = 'py-2 px-3 rounded-xl text-xs font-bold uppercase text-gray-600 hover:text-gray-900 transition';
+            }
+            if (map) map.resize();
+        }
+
+        function formatarMoeda(valor, compacto = false) {
+            const num = Number(valor) || 0;
+            if (compacto && Math.abs(num) >= 1000) {
+                return `R$ ${(num / 1000).toFixed(1)}k`;
+            }
+            return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function mostrarToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            clearTimeout(window.__toastTimeout);
+            window.__toastTimeout = setTimeout(() => el.classList.add('hidden'), 2800);
+        }
+    </script>
+</body>
+</html>
