@@ -285,6 +285,7 @@
     let cupomAplicado = ""; 
     let mapaCategorias = {};
     let lojaOnline = false;
+	let ativo = false;
 	let valorTeleCalculado = 0;
     const idLoja = new URLSearchParams(window.location.search).get('l');
 
@@ -336,6 +337,7 @@
             };
 
             lojaOnline = db.config.online;
+			ativo = db.loja.ativo;
             renderInterface();
             footer();
         } catch (err) {
@@ -548,8 +550,8 @@
                     ${descontoAtivo > 0 ? `<div class="flex justify-between text-green-600"><span>Desconto (${descontoAtivo}%)</span><span>- R$ ${valorCupom.toFixed(2)}</span></div>` : ''}
                     <div class="flex justify-between text-xl font-black border-t pt-2 mt-2"><span>TOTAL</span><span>R$ ${Math.max(0, total).toFixed(2)}</span></div>
                 </div>
-                <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full ${lojaOnline ? 'bg-yellow-400' : 'bg-gray-400 opacity-50 cursor-not-allowed'} py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all" ${!lojaOnline ? 'disabled' : ''}>
-                    ${lojaOnline ? 'Confirmar Pedido' : 'LOJA FECHADA'}
+                <button onclick="finalizarPedido()" id="btn-finalizar" class="w-full ${lojaOnline || ativo ? 'bg-yellow-400' : 'bg-gray-400 opacity-50 cursor-not-allowed'} py-4 rounded-2xl font-black uppercase italic shadow-lg active:scale-95 transition-all" ${!lojaOnline || !ativo ? 'disabled' : ''}>
+                    ${lojaOnline && ativo ? 'Confirmar Pedido' : 'LOJA FECHADA'}
                 </button>
             </div>`;
     }
